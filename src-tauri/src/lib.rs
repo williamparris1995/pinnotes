@@ -16,6 +16,12 @@ mod geometry;
 #[allow(dead_code)]
 mod snooze;
 
+// Per-note WebviewWindow lifecycle (open/show/hide/close/move) via the Tauri v2
+// WebviewWindow API. Not yet wired into setup(); silence the unused-module
+// warning until Task 10.
+#[allow(dead_code)]
+mod window_manager;
+
 use tauri::{WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::MacosLauncher;
 
