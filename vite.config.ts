@@ -1,13 +1,14 @@
 /// <reference types="vitest/config" />
 import { defineConfig } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
+import { svelteTesting } from "@testing-library/svelte/vite";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [svelte()],
+  plugins: [svelte(), svelteTesting()],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //
@@ -33,6 +34,7 @@ export default defineConfig(async () => ({
   test: {
     // Vitest config (jsdom for component tests, added in a later task)
     environment: "jsdom",
+    globals: true,
     include: ["src/**/*.{test,spec}.{ts,js}"],
   },
 }));
