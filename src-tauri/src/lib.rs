@@ -3,6 +3,11 @@
 // "smoke" window to verify the Tauri platform feasibility (transparent /
 // borderless / topmost). Later tasks replace this with the real note windows.
 
+// rusqlite data layer + NoteRepository. Not yet wired into setup(); consumed in
+// a later task, so silence the unused-module warning in non-test builds.
+#[allow(dead_code)]
+mod db;
+
 use tauri::{WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::MacosLauncher;
 
