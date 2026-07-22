@@ -23,5 +23,5 @@
 {:else if route.name === 'settings'}
   <SettingsView />
 {:else}
-  <div />
+  <div></div>
 {/if}
