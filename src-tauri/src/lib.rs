@@ -8,6 +8,14 @@
 #[allow(dead_code)]
 mod db;
 
+// Work-area geometry clamp (keep note windows inside the monitor that covers
+// them the most) + snooze repop decision/scheduler. Pure domain logic; not yet
+// wired into setup(), so silence the unused-module warning until Task 10.
+#[allow(dead_code)]
+mod geometry;
+#[allow(dead_code)]
+mod snooze;
+
 use tauri::{WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::MacosLauncher;
 
