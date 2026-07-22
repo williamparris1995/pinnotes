@@ -1,0 +1,9 @@
+# graphify knowledge-graph tooling artifacts
+graphify-out/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
