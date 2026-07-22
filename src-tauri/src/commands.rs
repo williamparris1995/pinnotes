@@ -3,7 +3,7 @@
 // same logic without going through the command dispatch convention.
 use crate::{
     autostart,
-    db::{Note, NoteRepository},
+    db::{Db, Note, NoteRepository},
     geometry::{clamp_into_work_area, Rect},
     state::AppState,
     window_manager,
@@ -50,7 +50,16 @@ pub fn create_note(app: AppHandle, state: State<AppState>) -> Result<Note, Strin
 
 #[tauri::command]
 pub fn hide_note(id: String, app: AppHandle, state: State<AppState>) -> Result<(), String> {
-    let mins = default_snooze(&state)? as i64;
+    // The note's own snooze_minutes is authoritative; fall back to the global
+    // default only when the note has no (zero) value of its own.
+    let note_mins = NoteRepository::get(&state.db, &id)?
+        .map(|n| n.snooze_minutes)
+        .unwrap_or(0);
+    let mins = if note_mins > 0 {
+        note_mins
+    } else {
+        default_snooze(&state)? as i64
+    };
     let until = Utc::now() + chrono::Duration::minutes(mins);
     NoteRepository::snooze(&state.db, &id, &until.to_rfc3339())?;
     window_manager::hide_note(&app, &id).map_err(|e| e.to_string())?;
@@ -58,12 +67,15 @@ pub fn hide_note(id: String, app: AppHandle, state: State<AppState>) -> Result<(
     state
         .scheduler
         .schedule(id.clone(), Duration::from_secs(mins as u64 * 60), move || {
-            let _ = repop(&app2, &id);
+            let _ = repop_note(&app2, &id);
         });
     Ok(())
 }
 
-fn repop(app: &AppHandle, id: &str) -> Result<(), String> {
+/// Repop a snoozed note: if it still exists and isn't completed, clear the
+/// snooze and re-show its window. Shared by the in-process scheduler wake
+/// (hide_note's timer) and the startup scheduler wake (`lib::commands_show`).
+pub(crate) fn repop_note(app: &AppHandle, id: &str) -> Result<(), String> {
     let state = app.state::<AppState>();
     if let Some(n) = NoteRepository::get(&state.db, id)? {
         if n.completed_at.is_none() {
@@ -171,17 +183,36 @@ pub fn get_settings(
 
 #[tauri::command]
 pub fn set_settings(key: String, value: String, state: State<AppState>) -> Result<(), String> {
-    let lock = state.db.lock().map_err(|e| e.to_string())?;
+    set_setting(&state.db, &key, &value)
+}
+
+/// Read a single setting value, or `None` if the key is absent. Shared with
+/// `lib::setup` for the autostart first-run guard.
+pub(crate) fn get_setting(db: &Db, key: &str) -> Result<Option<String>, String> {
+    use rusqlite::OptionalExtension;
+    let lock = db.lock().map_err(|e| e.to_string())?;
+    lock.query_row(
+        "SELECT val FROM settings WHERE key=?1",
+        rusqlite::params![key],
+        |r| r.get::<_, String>(0),
+    )
+    .optional()
+    .map_err(|e| e.to_string())
+}
+
+/// Upsert a single setting value (INSERT … ON CONFLICT UPDATE).
+pub(crate) fn set_setting(db: &Db, key: &str, val: &str) -> Result<(), String> {
+    let lock = db.lock().map_err(|e| e.to_string())?;
     lock.execute(
         "INSERT INTO settings(key,val) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET val=excluded.val",
-        rusqlite::params![key, value],
+        rusqlite::params![key, val],
     )
     .map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
-pub fn get_autostart(app: AppHandle) -> bool {
+pub fn get_autostart(app: AppHandle) -> Result<bool, String> {
     autostart::is_enabled(&app)
 }
 

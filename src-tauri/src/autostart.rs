@@ -7,6 +7,6 @@ pub fn configure(app: &AppHandle, enabled: bool) -> Result<(), String> {
     else { mgr.disable().map_err(|e| e.to_string()) }
 }
 
-pub fn is_enabled(app: &AppHandle) -> bool {
-    app.autolaunch().is_enabled().unwrap_or(false)
+pub fn is_enabled(app: &AppHandle) -> Result<bool, String> {
+    app.autolaunch().is_enabled().map_err(|e| e.to_string())
 }

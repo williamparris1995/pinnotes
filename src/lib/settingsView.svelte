@@ -15,7 +15,7 @@
 
 <main>
   <h2>设置</h2>
-  <label>默认隐藏时长</label>
+  <span class="field-label">默认隐藏时长</span>
   <div>
     {#each opts as m}
       <button class:active={snooze === m} onclick={() => setSnooze(m)}>{m} 分钟</button>
@@ -26,5 +26,6 @@
 
 <style>
   main { font-family: var(--font); padding: 16px; }
+  .field-label { display: block; margin-bottom: 6px; }
   .active { background: var(--accent); color: #fff; }
 </style>

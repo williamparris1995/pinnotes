@@ -6,8 +6,17 @@
   let note = $state<Note | null>(null);
   let editing = $state(false);
   let draft = $state('');
+  let loadError = $state(false);
 
-  onMount(async () => (note = await invoke<Note>('get_note', { id })));
+  // On failure, show a fallback rather than leaving a blank, always-on-top
+  // transparent window stuck on screen.
+  onMount(async () => {
+    try {
+      note = await invoke<Note>('get_note', { id });
+    } catch {
+      loadError = true;
+    }
+  });
 
   function startEdit() { if (note) { draft = note.content; editing = true; } }
   async function commit() {
@@ -18,9 +27,11 @@
   const colorVar = $derived(note ? `var(--c-${note.color})` : 'transparent');
 </script>
 
-{#if note}
+{#if loadError}
+  <div class="note error">无法加载便签</div>
+{:else if note}
   <div class="note" style="background:{colorVar}">
-    <div class="grip"></div>
+    <div class="grip" data-tauri-drag-region></div>
     {#if editing}
       <textarea bind:value={draft} onfocusout={commit}></textarea>
     {:else}
@@ -36,6 +47,7 @@
 <style>
   .note { width: 240px; padding: 10px; border-radius: var(--radius);
           box-shadow: 0 6px 16px rgba(0,0,0,.2); }
+  .note.error { background: #eee; color: #b00; }
   .grip { width: 40px; height: 4px; margin: 0 auto 8px; background: rgba(0,0,0,.25); border-radius: 2px; }
   textarea { width: 100%; min-height: 60px; }
   .actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }

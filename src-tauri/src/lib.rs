@@ -33,12 +33,15 @@ pub fn run() {
                 scheduler: snooze::SnoozeScheduler::new(),
             });
             tray::build(app.handle())?;
-            // 默认开机自启（首次）
-            let _ = autostart::configure(app.handle(), true);
+            let state = app.state::<AppState>();
+            // 默认开机自启：仅首次运行启用，之后尊重用户在设置中的选择。
+            if commands::get_setting(&state.db, "autostart_configured")?.is_none() {
+                let _ = autostart::configure(app.handle(), true);
+                commands::set_setting(&state.db, "autostart_configured", "1")?;
+            }
             // 启动加载：开活跃便签窗、为隐藏中且未到期的便签排程重弹。
             // should_repop == true 表示隐藏便签的 snooze 已到期（离开期间到期）→
-            // 落入下面的 open_note 立即显示；否则尚未到期 → 排程到到点再弹。
-            let state = app.state::<AppState>();
+            // 先清掉残留的 hidden 标志再 open_note 立即显示；否则尚未到期 → 排程到到点再弹。
             for n in db::NoteRepository::active(&state.db).map_err(|e| anyhow::anyhow!(e))? {
                 if n.is_hidden {
                     if let Some(until_iso) = n.hidden_until.clone() {
@@ -56,6 +59,9 @@ pub fn run() {
                                 },
                             );
                             continue;
+                        } else {
+                            // 离开期间已到期：清掉残留 hidden 标志后再显示。
+                            db::NoteRepository::clear_snooze(&state.db, &n.id)?;
                         }
                     }
                 }
@@ -105,18 +111,11 @@ pub fn run() {
         .expect("error while running tauri application");
 }
 
-/// Repop a snoozed note when its timer fires during startup load. Mirrors
-/// `commands::repop` but takes an owned `AppHandle` so it can move into the
-/// scheduler's `FnOnce` wake callback.
+/// Repop a snoozed note when its timer fires during startup load. Thin wrapper
+/// over the shared `commands::repop_note` helper; takes an owned `AppHandle`
+/// so it can move into the scheduler's `FnOnce` wake callback.
 fn commands_show(app: tauri::AppHandle, id: &str) -> Result<(), String> {
-    let state = app.state::<AppState>();
-    if let Some(n) = db::NoteRepository::get(&state.db, id)? {
-        if n.completed_at.is_none() {
-            db::NoteRepository::clear_snooze(&state.db, id)?;
-            window_manager::show_note(&app, id).map_err(|e| e.to_string())?;
-        }
-    }
-    Ok(())
+    commands::repop_note(&app, id)
 }
 
 /// Open one of the auxiliary single-instance windows (completed / settings).
