@@ -22,6 +22,19 @@ mod snooze;
 #[allow(dead_code)]
 mod window_manager;
 
+// System-tray menu (new / show-all / completed / settings / quit + separator)
+// built with Tauri v2's TrayIconBuilder. Not yet wired into setup(); menu
+// dispatch lands in `on_menu_event` in Task 10, so silence the unused-module
+// warning until then.
+#[allow(dead_code)]
+mod tray;
+
+// OS-level autostart enable/disable wrapper around tauri-plugin-autostart
+// (already registered in the builder below). Not yet wired into setup();
+// silence the unused-module warning until Task 10.
+#[allow(dead_code)]
+mod autostart;
+
 use tauri::{WebviewUrl, WebviewWindowBuilder};
 use tauri_plugin_autostart::MacosLauncher;
 
