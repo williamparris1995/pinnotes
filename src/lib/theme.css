@@ -1,0 +1,7 @@
+:root {
+  --accent: #4a6fa5;
+  --radius: 12px;
+  --font: "Segoe UI", system-ui, sans-serif;
+  --c-yellow: #fff59d; --c-pink: #ffcdd2; --c-blue: #bbdefb; --c-green: #c8e6c9;
+}
+html, body, #app { margin: 0; height: 100%; font-family: var(--font); background: transparent; }
