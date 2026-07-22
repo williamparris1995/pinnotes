@@ -1,5 +1,4 @@
-// Frontend entry. Task 1 ships a minimal smoke placeholder; Task 6 replaces
-// App.svelte with the hash-routed shell and imports the theme here.
+import './lib/theme.css';
 import { mount } from "svelte";
 import App from "./App.svelte";
 
