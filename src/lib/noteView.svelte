@@ -266,11 +266,11 @@
   .note-body {
     flex: 1 1 auto;
     min-height: 0;
-    display: flex;
   }
   .note-body textarea {
-    flex: 1 1 auto;
+    display: block;
     width: 100%;
+    height: 100%;
     box-sizing: border-box;
     font-family: inherit;
     font-size: 15px;
