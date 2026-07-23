@@ -47,7 +47,7 @@
       <span class="done-time">{fmtTime(it.completed_at)}</span>
       <div class="done-actions">
         <button type="button" class="done-act" title="重新激活" aria-label="重新激活" onclick={() => reactivate(it)}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 7 21 7 21 3"/><path d="M21 7l-4 4"/><path d="M3 17a9 9 0 0 0 15 6"/></svg>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 14"/></svg>
         </button>
         <button type="button" class="done-act" title="复制" aria-label="复制" onclick={() => copyNote(it)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
