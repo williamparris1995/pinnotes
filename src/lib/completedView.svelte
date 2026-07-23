@@ -3,9 +3,10 @@
   import { invoke, type Note } from './tauri';
 
   // Prototype pinnotes-8c76 · Section 02 CompletedWindow: each row is a color
-  // swatch + truncated text + completed time + 4 icon actions
-  // (重新激活 / 复制 / 编辑 / 删除). Dynamic behavior is unchanged: load on
-  // mount, each action invokes its backend command.
+  // swatch + truncated text + completed time + 3 icon actions
+  // (重新激活 / 复制 / 删除). After reactivate/delete the list re-fetches so
+  // the row disappears; copy leaves the original and the backend opens a new
+  // active note window.
   let items = $state<Note[]>([]);
   onMount(async () => (items = await invoke<Note[]>('list_completed')));
 
@@ -24,9 +25,17 @@
     return `${d.getMonth() + 1}月${d.getDate()}日 ${hh}:${mm}`;
   }
 
-  function editNote(it: Note) {
-    const content = prompt('编辑便签', it.content) ?? it.content;
-    invoke('edit_note', { id: it.id, content });
+  // Only reactivate / copy / delete are exposed (edit was removed per request).
+  async function reactivate(it: Note) {
+    await invoke('reactivate', { id: it.id });
+    items = await invoke<Note[]>('list_completed');
+  }
+  async function copyNote(it: Note) {
+    await invoke('copy_note', { id: it.id });
+  }
+  async function deleteNote(it: Note) {
+    await invoke('delete_note', { id: it.id });
+    items = await invoke<Note[]>('list_completed');
   }
 </script>
 
@@ -37,16 +46,13 @@
       <span class="done-text" title={it.content}>{it.content}</span>
       <span class="done-time">{fmtTime(it.completed_at)}</span>
       <div class="done-actions">
-        <button type="button" class="done-act" title="重新激活" aria-label="重新激活" onclick={() => invoke('reactivate', { id: it.id })}>
+        <button type="button" class="done-act" title="重新激活" aria-label="重新激活" onclick={() => reactivate(it)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="17 7 21 7 21 3"/><path d="M21 7l-4 4"/><path d="M3 17a9 9 0 0 0 15 6"/></svg>
         </button>
-        <button type="button" class="done-act" title="复制" aria-label="复制" onclick={() => invoke('copy_note', { id: it.id })}>
+        <button type="button" class="done-act" title="复制" aria-label="复制" onclick={() => copyNote(it)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
         </button>
-        <button type="button" class="done-act" title="编辑" aria-label="编辑" onclick={() => editNote(it)}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
-        </button>
-        <button type="button" class="done-act danger" title="删除" aria-label="删除" onclick={() => invoke('delete_note', { id: it.id })}>
+        <button type="button" class="done-act danger" title="删除" aria-label="删除" onclick={() => deleteNote(it)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
       </div>

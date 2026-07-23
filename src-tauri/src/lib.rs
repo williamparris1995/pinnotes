@@ -31,6 +31,7 @@ pub fn run() {
             app.manage(AppState {
                 db,
                 scheduler: snooze::SnoozeScheduler::new(),
+                drag_writes: std::sync::Mutex::new(std::collections::HashMap::new()),
             });
             tray::build(app.handle())?;
             let state = app.state::<AppState>();
