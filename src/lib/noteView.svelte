@@ -60,6 +60,20 @@
     }
   }
 
+  // Debounced autosave on input. Always-on-top windows blur unpredictably, so
+  // focusout (commit) alone can miss a save — which left notes blank/empty on
+  // reopen. Save ~500ms after typing stops as well.
+  let saveTimer: ReturnType<typeof setTimeout> | null = null;
+  function onInput() {
+    if (saveTimer) clearTimeout(saveTimer);
+    saveTimer = setTimeout(async () => {
+      if (note && draft !== note.content) {
+        await invoke('edit_note', { id, content: draft });
+        note.content = draft;
+      }
+    }, 500);
+  }
+
   // #3: change color live — persist + update reactively so the note-{color}
   // class re-applies the background immediately.
   function setColor(color: string) {
@@ -140,6 +154,7 @@
       <textarea
         bind:value={draft}
         bind:this={taRef}
+        oninput={onInput}
         onfocusout={commit}
         placeholder="输入提醒内容…"
       ></textarea>
