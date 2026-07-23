@@ -85,6 +85,10 @@ pub fn run() {
                     let state = app.state::<AppState>();
                     let _ = commands::show_all_impl(app, &state);
                 }
+                "hideAll" => {
+                    let state = app.state::<AppState>();
+                    let _ = commands::hide_all_impl(app, &state);
+                }
                 "completed" => {
                     let _ = open_simple(app, "completed");
                 }
@@ -110,6 +114,7 @@ pub fn run() {
             commands::delete_note,
             commands::list_completed,
             commands::show_all,
+            commands::hide_all,
             commands::get_settings,
             commands::set_settings,
             commands::get_autostart,

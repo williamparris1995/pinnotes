@@ -229,6 +229,21 @@ pub fn show_all(app: AppHandle, state: State<AppState>) -> Result<(), String> {
     show_all_impl(&app, &state)
 }
 
+// --- hide_all: impl + command wrapper ----------------------------------------
+/// Hide every active note's window (no snooze — they stay hidden until
+/// 显示全部 or a per-note re-pop). Symmetric counterpart to show_all.
+pub fn hide_all_impl(app: &AppHandle, state: &AppState) -> Result<(), String> {
+    for n in NoteRepository::active(&state.db)? {
+        window_manager::hide_note(app, &n.id).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn hide_all(app: AppHandle, state: State<AppState>) -> Result<(), String> {
+    hide_all_impl(&app, &state)
+}
+
 #[tauri::command]
 pub fn get_settings(
     state: State<AppState>,
