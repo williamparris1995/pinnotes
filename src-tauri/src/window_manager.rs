@@ -35,12 +35,12 @@ pub fn open_note(app: &AppHandle, note: &Note) -> tauri::Result<()> {
         })
         .build()?;
 
-    // Persist the note's logical position when the OS moves the window.
-    // Dragging the grip fires WindowEvent::Moved repeatedly; the event carries
-    // a PhysicalPosition, so divide by the scale factor to match the logical
-    // x/y used everywhere else (open_note/move_note/clamp_note). Each
-    // update_position locks and releases the Mutex within itself, so nothing
-    // is held across an await (there is none here).
+    // Persist the note's logical position when the OS moves the window — but
+    // DEBOUNCED: Moved fires per pixel during a drag, so we cancel the previous
+    // pending write and schedule one ~200ms later on a background task. This
+    // keeps per-pixel SQLite writes off the main thread (which was lagging the
+    // drag — the "drift" symptom). The event carries a PhysicalPosition, so
+    // divide by the scale factor to match the logical x/y used elsewhere.
     let app_handle = app.clone();
     let id = note.id.clone();
     let lbl = l.clone();
@@ -53,7 +53,17 @@ pub fn open_note(app: &AppHandle, note: &Note) -> tauri::Result<()> {
             let x = pos.x as f64 / scale;
             let y = pos.y as f64 / scale;
             let state = app_handle.state::<AppState>();
-            let _ = NoteRepository::update_position(&state.db, &id, x, y);
+            let mut drag = state.drag_writes.lock().unwrap();
+            if let Some(prev) = drag.remove(&id) {
+                prev.abort();
+            }
+            let app2 = app_handle.clone();
+            let id2 = id.clone();
+            let handle = tauri::async_runtime::spawn(async move {
+                tokio::time::sleep(std::time::Duration::from_millis(200)).await;
+                let _ = NoteRepository::update_position(&app2.state::<AppState>().db, &id2, x, y);
+            });
+            drag.insert(id.clone(), handle);
         }
     });
 
