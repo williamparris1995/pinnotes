@@ -14,10 +14,12 @@ describe('SettingsView', () => {
         : Promise.resolve({ default_snooze_minutes: '2' }),
     );
     render(SettingsView);
-    // wait for onMount to finish loading settings
-    await screen.findByText('5 分钟');
+    // wait for the segmented control to render (onMount hydrates the active option)
+    await screen.findByText('5');
 
-    await fireEvent.click(screen.getByText('5 分钟'));
+    // Prototype markup: each seg-opt button shows just the number ("5");
+    // "分钟" is a separate suffix element.
+    await fireEvent.click(screen.getByText('5'));
     const setSettingsCall = (invoke as any).mock.calls.find((c: any) => c[0] === 'set_settings');
     expect(setSettingsCall).toBeTruthy();
     expect(setSettingsCall[1]).toEqual({ key: 'default_snooze_minutes', value: '5' });

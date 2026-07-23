@@ -39,6 +39,10 @@ pub fn run() {
                 let _ = autostart::configure(app.handle(), true);
                 commands::set_setting(&state.db, "autostart_configured", "1")?;
             }
+            // 首次运行：创建一条欢迎便签并显示，避免启动后"什么都没有"。
+            if let Some(note) = commands::maybe_welcome_note(&state.db)? {
+                window_manager::open_note(app.handle(), &note)?;
+            }
             // 启动加载：开活跃便签窗、为隐藏中且未到期的便签排程重弹。
             // should_repop == true 表示隐藏便签的 snooze 已到期（离开期间到期）→
             // 先清掉残留的 hidden 标志再 open_note 立即显示；否则尚未到期 → 排程到到点再弹。
@@ -96,6 +100,8 @@ pub fn run() {
             commands::hide_note,
             commands::complete_note,
             commands::edit_note,
+            commands::set_color,
+            commands::set_size,
             commands::move_note,
             commands::reactivate,
             commands::copy_note,

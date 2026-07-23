@@ -1,5 +1,7 @@
 use crate::db::{Note, NoteRepository};
 use crate::state::AppState;
+use tauri::utils::config::WindowEffectsConfig;
+use tauri::utils::{WindowEffect, WindowEffectState};
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 fn label(id: &str) -> String { format!("note-{id}") }
@@ -21,6 +23,16 @@ pub fn open_note(app: &AppHandle, note: &Note) -> tauri::Result<()> {
         .always_on_top(true)
         .skip_taskbar(true)
         .resizable(false)
+        // Real frosted glass: CSS backdrop-filter can't blur the desktop
+        // through a transparent webview, so request an OS-level Acrylic
+        // effect. Acrylic works on Windows 10 (Mica is Win11-only, which is
+        // why we avoid it). The noteView's rgba tint still colors the glass.
+        .effects(WindowEffectsConfig {
+            effects: vec![WindowEffect::Acrylic],
+            state: Some(WindowEffectState::Active),
+            radius: None,
+            color: None,
+        })
         .build()?;
 
     // Persist the note's logical position when the OS moves the window.
@@ -53,6 +65,32 @@ pub fn show_note(app: &AppHandle, id: &str) -> tauri::Result<()> {
     Ok(())
 }
 
+/// Show a note window WITHOUT stealing keyboard focus — used by the snooze
+/// re-pop so a reminder coming back doesn't interrupt what the user is doing.
+/// On Windows this uses `SW_SHOWNOACTIVATE`; the note still shows on top
+/// (always_on_top) but the currently-active window keeps focus. `show_note`
+/// (with set_focus) is still used for user-initiated actions like 显示全部.
+pub fn show_note_no_focus(app: &AppHandle, id: &str) -> tauri::Result<()> {
+    #[cfg(target_os = "windows")]
+    {
+        if let Some(w) = app.get_webview_window(&label(id)) {
+            use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWNOACTIVATE};
+            let hwnd = w.hwnd()?;
+            unsafe {
+                let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
+            }
+        }
+        return Ok(());
+    }
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Some(w) = app.get_webview_window(&label(id)) {
+            w.show()?;
+        }
+        Ok(())
+    }
+}
+
 pub fn hide_note(app: &AppHandle, id: &str) -> tauri::Result<()> {
     if let Some(w) = app.get_webview_window(&label(id)) { w.hide()?; }
     Ok(())
@@ -67,6 +105,14 @@ pub fn move_note(app: &AppHandle, id: &str, x: f64, y: f64) -> tauri::Result<()>
     use tauri::LogicalPosition;
     if let Some(w) = app.get_webview_window(&label(id)) {
         w.set_position(LogicalPosition::new(x, y))?;
+    }
+    Ok(())
+}
+
+pub fn resize_note(app: &AppHandle, id: &str, w: f64, h: f64) -> tauri::Result<()> {
+    use tauri::LogicalSize;
+    if let Some(win) = app.get_webview_window(&label(id)) {
+        win.set_size(LogicalSize::new(w, h))?;
     }
     Ok(())
 }
