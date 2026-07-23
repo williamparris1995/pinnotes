@@ -145,7 +145,7 @@
   }
   .done-act:hover { background: rgba(0, 0, 0, 0.06); color: var(--ink); }
   .done-act.danger:hover { background: #ffeaea; color: var(--danger); }
-  .done-act svg { width: 13px; height: 13px; stroke-width: 2; }
+  .done-act svg { width: 13px; height: 13px; stroke-width: 2; overflow: visible; }
 
   .empty-state {
     padding: 16px 16px 18px;
