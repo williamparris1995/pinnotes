@@ -36,5 +36,11 @@ export default defineConfig(async () => ({
     environment: "jsdom",
     globals: true,
     include: ["src/**/*.{test,spec}.{ts,js}"],
+    // Vitest 4's default `forks` pool fails to propagate worker state on this
+    // Win10/Node22 setup (getWorkerState() is undefined during collection ->
+    // "Cannot read properties of undefined (reading 'config')" on every suite,
+    // even a trivial one). `vmThreads` runs tests in the main thread via VM
+    // contexts and works here, so all suites collect and run.
+    pool: "vmThreads",
   },
 }));

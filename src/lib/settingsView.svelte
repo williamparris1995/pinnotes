@@ -5,7 +5,7 @@
   // Prototype pinnotes-8c76 · Section 03 SettingsWindow: a snooze segmented
   // control (1/2/5/10/30 分钟) and an 开机自启 toggle. Dynamic behavior is
   // unchanged: load on mount, persist on change.
-  const opts = [1, 2, 5, 10, 30];
+  const opts = [1, 2, 5, 10, 30, 60];
   let snooze = $state(2);
   let auto = $state(true);
 
