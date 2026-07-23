@@ -25,8 +25,6 @@ pub fn open_note(app: &AppHandle, note: &Note) -> tauri::Result<()> {
         // (clicks stopped responding), so notes are plain translucent cards
         // (the rgba tint over the transparent window). Drag is smooth too.
         .build()?;
-
-    // Persist the note's logical position when the OS moves the window —
     // DEBOUNCED: Moved fires per pixel during a drag, so cancel the previous
     // pending write and schedule one ~250ms later on a background task (no
     // per-pixel SQLite writes on the main thread). The event carries a
