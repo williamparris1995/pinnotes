@@ -25,7 +25,7 @@ describe('NoteView', () => {
     const { invoke } = await import('./tauri');
     (invoke as any).mockResolvedValue({ ...NOTE });
     render(NoteView, { props: { id: 'n1' } });
-    expect(await screen.findByText('提交季度报告')).toBeTruthy();
+    expect(await screen.findByDisplayValue('提交季度报告')).toBeTruthy();
 
     // 隐藏 still fires hide_note immediately.
     await fireEvent.click(screen.getByText('隐藏'));
@@ -46,7 +46,7 @@ describe('NoteView', () => {
     const { invoke } = await import('./tauri');
     (invoke as any).mockResolvedValue({ ...NOTE });
     render(NoteView, { props: { id: 'n1' } });
-    await vi.waitFor(() => expect(screen.getByText('提交季度报告')).toBeTruthy());
+    await vi.waitFor(() => expect(screen.getByDisplayValue('提交季度报告')).toBeTruthy());
 
     await fireEvent.click(screen.getByText('完成'));
     expect(callsOf(invoke as any)).not.toContain('complete_note');
