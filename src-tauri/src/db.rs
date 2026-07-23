@@ -116,6 +116,12 @@ impl NoteRepository {
         Ok(())
     }
 
+    pub fn update_snooze_minutes(db: &Db, id: &str, mins: i64) -> Result<(), String> {
+        let lock = db.lock().map_err(|e| e.to_string())?;
+        lock.execute("UPDATE notes SET snooze_minutes=?1 WHERE id=?2", params![mins, id]).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
     pub fn snooze(db: &Db, id: &str, until_iso: &str) -> Result<(), String> {
         let lock = db.lock().map_err(|e| e.to_string())?;
         lock.execute("UPDATE notes SET is_hidden=1, hidden_until=?1 WHERE id=?2", params![until_iso, id]).map_err(|e| e.to_string())?;
@@ -205,5 +211,14 @@ mod tests {
         NoteRepository::update_size(&db, "a", 360.0, 260.0).unwrap();
         let after = NoteRepository::get(&db, "a").unwrap().unwrap();
         assert_eq!((after.w, after.h), (360.0, 260.0));
+    }
+
+    #[test]
+    fn update_snooze_minutes_changes_duration() {
+        let db = mem();
+        NoteRepository::create(&db, &sample("a")).unwrap();
+        assert_eq!(NoteRepository::get(&db, "a").unwrap().unwrap().snooze_minutes, 2);
+        NoteRepository::update_snooze_minutes(&db, "a", 10).unwrap();
+        assert_eq!(NoteRepository::get(&db, "a").unwrap().unwrap().snooze_minutes, 10);
     }
 }

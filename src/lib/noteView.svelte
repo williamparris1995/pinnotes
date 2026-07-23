@@ -21,6 +21,8 @@
   ] as const;
   const SIZE_NORMAL = { w: 240, h: 170 };
   const SIZE_LARGE = { w: 360, h: 260 };
+  // #2: per-note hide duration cycled in the toolbar; takes effect on next 隐藏.
+  const SNOOZE_OPTS = [1, 2, 5, 10, 30, 60] as const;
   let isLarge = $derived(note ? note.w >= 340 : false);
 
   let taRef = $state<HTMLTextAreaElement | null>(null);
@@ -76,6 +78,16 @@
     note.h = target.h;
   }
 
+  // #2: cycle through the preset hide durations (wraps around); persists and
+  // updates reactively so the button label refreshes immediately.
+  function cycleSnooze() {
+    if (!note) return;
+    const idx = SNOOZE_OPTS.indexOf(note.snooze_minutes as (typeof SNOOZE_OPTS)[number]);
+    const next = SNOOZE_OPTS[(idx + 1) % SNOOZE_OPTS.length];
+    invoke('set_snooze', { id, minutes: next });
+    note.snooze_minutes = next;
+  }
+
   // #6: defer the real complete_note by 5s so the user can undo a misclick;
   // the note stays put until the timer fires.
   function onComplete() {
@@ -89,22 +101,19 @@
     if (completeTimer) { clearTimeout(completeTimer); completeTimer = null; }
     pendingComplete = false;
   }
-
-  // Drag the OS window by grabbing anywhere except interactive elements.
-  // (data-tauri-drag-region did not work on this WebView2/Win10 setup, so we
-  // use the explicit startDragging() API instead.)
-  function onPointerDown(e: PointerEvent) {
-    const t = e.target as HTMLElement | null;
-    if (t && (t.closest('button') || t.closest('textarea') || t.closest('.note-toolbar') || t.closest('.note-toast'))) return;
-    getCurrentWindow().startDragging();
-  }
 </script>
 
 {#if loadError}
   <div class="note note-error">无法加载便签</div>
 {:else if note}
-  <article class="note note-{note.color}" onpointerdown={onPointerDown}>
-    <div class="note-grip"></div>
+  <article class="note note-{note.color}">
+    <div
+      class="note-grip"
+      role="button"
+      tabindex="0"
+      aria-label="拖动"
+      onpointerdown={() => getCurrentWindow().startDragging()}
+    ></div>
     <div class="note-toolbar">
       <div class="color-dots">
         {#each COLORS as c (c.id)}
@@ -118,9 +127,14 @@
           ></button>
         {/each}
       </div>
-      <button type="button" class="size-btn" onclick={toggleSize}>
-        {isLarge ? '小' : '大'}
-      </button>
+      <div class="toolbar-tools">
+        <button type="button" class="size-btn" title="隐藏时长（分钟）" onclick={cycleSnooze}>
+          {note.snooze_minutes}分
+        </button>
+        <button type="button" class="size-btn" onclick={toggleSize}>
+          {isLarge ? '小' : '大'}
+        </button>
+      </div>
     </div>
     <div class="note-body">
       <textarea
@@ -203,6 +217,7 @@
     padding: 0 10px 2px;
   }
   .color-dots { display: flex; gap: 4px; }
+  .toolbar-tools { display: flex; gap: 4px; }
   .color-dot {
     width: 14px;
     height: 14px;

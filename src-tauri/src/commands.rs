@@ -133,6 +133,11 @@ pub fn set_color(id: String, color: String, state: State<AppState>) -> Result<()
 }
 
 #[tauri::command]
+pub fn set_snooze(id: String, minutes: i64, state: State<AppState>) -> Result<(), String> {
+    NoteRepository::update_snooze_minutes(&state.db, &id, minutes)
+}
+
+#[tauri::command]
 pub fn move_note(
     id: String,
     x: f64,
