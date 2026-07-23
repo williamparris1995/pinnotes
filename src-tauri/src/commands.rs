@@ -48,6 +48,34 @@ pub fn create_note(app: AppHandle, state: State<AppState>) -> Result<Note, Strin
     create_note_impl(&app, &state)
 }
 
+/// First-run welcome note: when `first_run_done` is unset, create a visible
+/// sticky note that explains the app (so launching PinNotes is never a blank
+/// screen), then mark the flag. Returns `Some(note)` on the first run (caller
+/// opens its window) and `None` on every later run. Pure DB logic — testable
+/// without Tauri.
+pub(crate) fn maybe_welcome_note(db: &Db) -> Result<Option<Note>, String> {
+    if get_setting(db, "first_run_done")?.is_some() {
+        return Ok(None);
+    }
+    let note = Note {
+        id: Uuid::new_v4().to_string(),
+        content: "欢迎使用 PinNotes！\n\n这是一条置顶便签。\n右键托盘图标（屏幕右下角，可能在 ^ 隐藏区里）可：新建便签 / 显示全部 / 已完成 / 设置 / 退出。\n\n点「隐藏」会短暂收起、到点自动弹回；点「✓ 完成」才会让它消失。".into(),
+        color: "yellow".into(),
+        x: 160.0,
+        y: 80.0,
+        w: 240.0,
+        h: 260.0,
+        snooze_minutes: 2,
+        created_at: now_iso(),
+        completed_at: None,
+        is_hidden: false,
+        hidden_until: None,
+    };
+    NoteRepository::create(db, &note)?;
+    set_setting(db, "first_run_done", "1")?;
+    Ok(Some(note))
+}
+
 #[tauri::command]
 pub fn hide_note(id: String, app: AppHandle, state: State<AppState>) -> Result<(), String> {
     // The note's own snooze_minutes is authoritative; fall back to the global
@@ -80,7 +108,7 @@ pub(crate) fn repop_note(app: &AppHandle, id: &str) -> Result<(), String> {
     if let Some(n) = NoteRepository::get(&state.db, id)? {
         if n.completed_at.is_none() {
             NoteRepository::clear_snooze(&state.db, id)?;
-            window_manager::show_note(app, id).map_err(|e| e.to_string())?;
+            window_manager::show_note_no_focus(app, id).map_err(|e| e.to_string())?;
         }
     }
     Ok(())
@@ -100,6 +128,11 @@ pub fn edit_note(id: String, content: String, state: State<AppState>) -> Result<
 }
 
 #[tauri::command]
+pub fn set_color(id: String, color: String, state: State<AppState>) -> Result<(), String> {
+    NoteRepository::update_color(&state.db, &id, &color)
+}
+
+#[tauri::command]
 pub fn move_note(
     id: String,
     x: f64,
@@ -115,6 +148,19 @@ pub fn move_note(
     let clamped = clamp_note(&app, x, y, w, h);
     NoteRepository::update_position(&state.db, &id, clamped.0, clamped.1)?;
     window_manager::move_note(&app, &id, clamped.0, clamped.1).map_err(|e| e.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
+pub fn set_size(
+    id: String,
+    w: f64,
+    h: f64,
+    app: AppHandle,
+    state: State<AppState>,
+) -> Result<(), String> {
+    NoteRepository::update_size(&state.db, &id, w, h)?;
+    window_manager::resize_note(&app, &id, w, h).map_err(|e| e.to_string())?;
     Ok(())
 }
 
@@ -282,4 +328,29 @@ fn clamp_note(app: &AppHandle, x: f64, y: f64, w: f64, h: f64) -> (f64, f64) {
         8.0,
     );
     (clamped.left, clamped.top)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::init;
+    use rusqlite::Connection;
+
+    fn mem() -> Db {
+        init(Connection::open_in_memory().unwrap()).unwrap()
+    }
+
+    #[test]
+    fn welcome_note_created_only_on_first_run() {
+        let db = mem();
+        // First run: flag absent -> create a welcome note with guidance content.
+        let n1 = maybe_welcome_note(&db)
+            .unwrap()
+            .expect("first run yields a welcome note");
+        assert!(!n1.content.is_empty());
+        assert_eq!(NoteRepository::active(&db).unwrap().len(), 1);
+        // Flag now set -> second call is a no-op (None, no extra note).
+        assert!(maybe_welcome_note(&db).unwrap().is_none());
+        assert_eq!(NoteRepository::active(&db).unwrap().len(), 1);
+    }
 }

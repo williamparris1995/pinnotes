@@ -10,7 +10,8 @@ describe('CompletedView', () => {
     const { invoke } = await import('./tauri');
     (invoke as any).mockResolvedValue([]);
     render(CompletedView);
-    expect(await screen.findByText('暂无已完成项')).toBeTruthy();
+    // Prototype empty-state copy (always shown as a list footer).
+    expect(await screen.findByText(/暂无更多已完成项/)).toBeTruthy();
   });
   it('renders rows and fires reactivate', async () => {
     const { invoke } = await import('./tauri');
@@ -19,7 +20,8 @@ describe('CompletedView', () => {
     ]);
     render(CompletedView);
     await screen.findByText('旧任务');
-    await fireEvent.click(screen.getByText('重新激活'));
+    // Action buttons are icon-only; the reactivate button carries title="重新激活".
+    await fireEvent.click(screen.getByTitle('重新激活'));
     expect((invoke as any).mock.calls.some((c: any) => c[0] === 'reactivate')).toBe(true);
   });
 });

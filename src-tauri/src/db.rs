@@ -104,6 +104,18 @@ impl NoteRepository {
         Ok(())
     }
 
+    pub fn update_color(db: &Db, id: &str, color: &str) -> Result<(), String> {
+        let lock = db.lock().map_err(|e| e.to_string())?;
+        lock.execute("UPDATE notes SET color=?1 WHERE id=?2", params![color, id]).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
+    pub fn update_size(db: &Db, id: &str, w: f64, h: f64) -> Result<(), String> {
+        let lock = db.lock().map_err(|e| e.to_string())?;
+        lock.execute("UPDATE notes SET w=?1, h=?2 WHERE id=?3", params![w, h, id]).map_err(|e| e.to_string())?;
+        Ok(())
+    }
+
     pub fn snooze(db: &Db, id: &str, until_iso: &str) -> Result<(), String> {
         let lock = db.lock().map_err(|e| e.to_string())?;
         lock.execute("UPDATE notes SET is_hidden=1, hidden_until=?1 WHERE id=?2", params![until_iso, id]).map_err(|e| e.to_string())?;
@@ -173,5 +185,25 @@ mod tests {
         assert!(NoteRepository::active(&db).unwrap().is_empty());
         NoteRepository::reactivate(&db, "a").unwrap();
         assert_eq!(NoteRepository::active(&db).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn update_color_changes_color() {
+        let db = mem();
+        NoteRepository::create(&db, &sample("a")).unwrap();
+        assert_eq!(NoteRepository::get(&db, "a").unwrap().unwrap().color, "yellow");
+        NoteRepository::update_color(&db, "a", "pink").unwrap();
+        assert_eq!(NoteRepository::get(&db, "a").unwrap().unwrap().color, "pink");
+    }
+
+    #[test]
+    fn update_size_changes_dimensions() {
+        let db = mem();
+        NoteRepository::create(&db, &sample("a")).unwrap();
+        let before = NoteRepository::get(&db, "a").unwrap().unwrap();
+        assert_eq!((before.w, before.h), (240.0, 170.0));
+        NoteRepository::update_size(&db, "a", 360.0, 260.0).unwrap();
+        let after = NoteRepository::get(&db, "a").unwrap().unwrap();
+        assert_eq!((after.w, after.h), (360.0, 260.0));
     }
 }
