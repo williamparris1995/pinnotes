@@ -187,33 +187,27 @@
 {/if}
 
 <style>
-  /* Ported from the OD prototype (project pinnotes-8c76) so the live note
-     matches the design: translucent pastel + backdrop blur, grip header,
-     bold body, pill action buttons. The card fills its window (the window's
-     w/h defines the note size; default 240x170 = the prototype note). */
+  /* Solid opaque sticky note (no translucency). The card fills its window;
+     the window's w/h defines the note size (default 240x170). No border /
+     radius / shadow: the window is opaque, so those would either clip or show
+     the window background — a plain solid rectangle is what's wanted. */
   :global(html, body, #app) { height: 100%; margin: 0; }
 
   .note {
     width: 100%;
     height: 100%;
     box-sizing: border-box;
-    border-radius: 10px;
-    box-shadow: 0 10px 28px rgba(0, 0, 0, 0.2), 0 3px 8px rgba(0, 0, 0, 0.12);
     display: flex;
     flex-direction: column;
-    backdrop-filter: blur(8px) saturate(130%);
-    -webkit-backdrop-filter: blur(8px) saturate(130%);
-    border: 1px solid rgba(255, 255, 255, 0.45);
     overflow: hidden;
-    position: relative;
     font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   }
   .note-error { display: block; padding: 16px; background: #eee; color: #b00; }
 
-  .note-yellow { background: rgba(255, 230, 120, 0.82); }
-  .note-pink   { background: rgba(255, 192, 200, 0.82); }
-  .note-blue   { background: rgba(160, 205, 255, 0.82); }
-  .note-green  { background: rgba(170, 230, 168, 0.82); }
+  .note-yellow { background: #ffe678; }
+  .note-pink   { background: #ffc0c8; }
+  .note-blue   { background: #a0cdff; }
+  .note-green  { background: #aae6a8; }
 
   .note-grip {
     flex: 0 0 auto;
