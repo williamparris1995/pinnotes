@@ -170,9 +170,13 @@ pub fn set_size(
 }
 
 #[tauri::command]
-pub fn reactivate(id: String, app: AppHandle, state: State<AppState>) -> Result<(), String> {
+pub async fn reactivate(id: String, app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
     NoteRepository::reactivate(&state.db, &id)?;
     if let Some(n) = NoteRepository::get(&state.db, &id)? {
+        // Async command -> runs on the runtime, so the main thread is free for
+        // WebviewWindowBuilder::build(). A sync command would run on the main
+        // thread inside the IPC handler and deadlock build (it needs the
+        // message loop); from the runtime it marshals onto a free main thread.
         window_manager::open_note(&app, &n).map_err(|e| e.to_string())?;
     }
     Ok(())
