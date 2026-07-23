@@ -3,10 +3,8 @@
   import { invoke, type Note } from './tauri';
 
   // Prototype pinnotes-8c76 · Section 02 CompletedWindow: each row is a color
-  // swatch + truncated text + completed time + 3 icon actions
-  // (重新激活 / 复制 / 删除). After reactivate/delete the list re-fetches so
-  // the row disappears; copy leaves the original and the backend opens a new
-  // active note window.
+  // swatch + truncated text + completed time + 2 icon actions
+  // (重新激活 / 删除). After either, the list re-fetches so the row disappears.
   let items = $state<Note[]>([]);
   onMount(async () => (items = await invoke<Note[]>('list_completed')));
 
@@ -25,13 +23,11 @@
     return `${d.getMonth() + 1}月${d.getDate()}日 ${hh}:${mm}`;
   }
 
-  // Only reactivate / copy / delete are exposed (edit was removed per request).
+  // reactivate (bring the note back to active) + delete. Copy was removed —
+  // reactivate already yields an active version of the note.
   async function reactivate(it: Note) {
     await invoke('reactivate', { id: it.id });
     items = await invoke<Note[]>('list_completed');
-  }
-  async function copyNote(it: Note) {
-    await invoke('copy_note', { id: it.id });
   }
   async function deleteNote(it: Note) {
     await invoke('delete_note', { id: it.id });
@@ -48,9 +44,6 @@
       <div class="done-actions">
         <button type="button" class="done-act" title="重新激活" aria-label="重新激活" onclick={() => reactivate(it)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 14"/></svg>
-        </button>
-        <button type="button" class="done-act" title="复制" aria-label="复制" onclick={() => copyNote(it)}>
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
         </button>
         <button type="button" class="done-act danger" title="删除" aria-label="删除" onclick={() => deleteNote(it)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
