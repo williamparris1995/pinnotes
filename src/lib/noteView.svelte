@@ -5,7 +5,6 @@
 
   let { id }: { id: string } = $props();
   let note = $state<Note | null>(null);
-  let editing = $state(false);
   let draft = $state('');
   let loadError = $state(false);
   // #6: pending completion shows an undo toast instead of closing immediately.
@@ -32,21 +31,16 @@
     try {
       const n = await invoke<Note>('get_note', { id });
       note = n;
-      // #2: a fresh/empty note is immediately editable so the user can type
-      // without an extra double-click.
-      if (n && n.content === '') {
-        draft = '';
-        editing = true;
-      }
+      // The body is an always-editable textarea; seed it with the saved text.
+      draft = n.content;
     } catch {
       loadError = true;
     }
   });
 
-  // #2: focus the textarea whenever edit mode turns on, and place the caret at
-  // the end. (HTML autofocus only fires on first page load, so use an effect.)
+  // Focus a fresh/empty note so the user can start typing immediately.
   $effect(() => {
-    if (editing && taRef) {
+    if (taRef && note && note.content === '') {
       taRef.focus();
       const len = taRef.value.length;
       taRef.selectionStart = len;
@@ -54,11 +48,14 @@
     }
   });
 
-  function startEdit() { if (note) { draft = note.content; editing = true; } }
+  // Save on blur — the textarea is always present, so there is no edit-mode
+  // toggle to exit; clicking colour/size/hidden/complete simply blurs it and
+  // persists any change.
   async function commit() {
-    if (note && draft !== note.content) await invoke('edit_note', { id, content: draft });
-    if (note) note.content = draft;
-    editing = false;
+    if (note && draft !== note.content) {
+      await invoke('edit_note', { id, content: draft });
+      note.content = draft;
+    }
   }
 
   // #3: change color live — persist + update reactively so the note-{color}
@@ -126,11 +123,12 @@
       </button>
     </div>
     <div class="note-body">
-      {#if editing}
-        <textarea bind:value={draft} bind:this={taRef} onfocusout={commit}></textarea>
-      {:else}
-        <p ondblclick={startEdit}>{note.content || '（空）'}</p>
-      {/if}
+      <textarea
+        bind:value={draft}
+        bind:this={taRef}
+        onfocusout={commit}
+        placeholder="输入提醒内容…"
+      ></textarea>
     </div>
     {#if pendingComplete}
       <div class="note-toast" role="status">
@@ -235,33 +233,30 @@
 
   .note-body {
     flex: 1 1 auto;
-    overflow: auto;
-    scrollbar-width: none;
-    padding: 2px 16px 4px;
+    min-height: 0;
+    display: flex;
   }
-  .note-body::-webkit-scrollbar { display: none; }
-  .note-body p {
-    margin: 0;
-    font-size: 15px;
-    font-weight: 600;
-    color: rgba(15, 15, 25, 0.86);
-    line-height: 1.4;
-    white-space: pre-wrap;
-    word-break: break-word;
-  }
-  textarea {
+  .note-body textarea {
+    flex: 1 1 auto;
     width: 100%;
     box-sizing: border-box;
     font-family: inherit;
     font-size: 15px;
-    color: rgba(15, 15, 25, 0.95);
-    border: 1px solid rgba(0, 0, 0, 0.12);
-    border-radius: 6px;
-    padding: 6px;
-    min-height: 60px;
-    resize: vertical;
-    background: rgba(255, 255, 255, 0.5);
+    font-weight: 600;
+    color: rgba(15, 15, 25, 0.86);
+    line-height: 1.4;
+    border: none;
+    border-radius: 0;
+    padding: 2px 16px 4px;
+    resize: none;
+    outline: none;
+    background: transparent;
+    white-space: pre-wrap;
+    word-break: break-word;
+    scrollbar-width: none;
   }
+  .note-body textarea::-webkit-scrollbar { display: none; }
+  .note-body textarea::placeholder { color: rgba(15, 15, 25, 0.4); font-weight: 500; }
 
   .note-toast {
     flex: 0 0 auto;
