@@ -40,9 +40,17 @@
     }
   });
 
-  // Focus a fresh/empty note so the user can start typing immediately.
+  // Render the loaded content and focus empty notes. Setting the textarea
+  // value explicitly here is the robust path: bind:value alone didn't reflect
+  // the late onMount load on some notes (copied/reactivated), leaving them
+  // blank despite having content in the DB.
   $effect(() => {
-    if (taRef && note && note.content === '') {
+    if (!taRef || !note) return;
+    if (taRef.value !== note.content) {
+      taRef.value = note.content;
+      draft = note.content;
+    }
+    if (note.content === '') {
       taRef.focus();
       const len = taRef.value.length;
       taRef.selectionStart = len;
