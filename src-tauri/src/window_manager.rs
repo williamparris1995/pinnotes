@@ -4,11 +4,42 @@ use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 fn label(id: &str) -> String { format!("note-{id}") }
 
+// Show / hide via raw Win32 ShowWindow on Windows. Tauri's show()/hide() track
+// an internal visibility flag that raw calls (SW_SHOWNOACTIVATE for the no-focus
+// repop) don't update — so mixing Tauri + raw leaves the flag stale and the next
+// Tauri show()/hide() becomes a no-op (the "can't hide after repop" bug). Using
+// raw for everything avoids the drift entirely.
+#[cfg(target_os = "windows")]
+fn raw_show(w: &tauri::WebviewWindow, activate: bool) {
+    use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOW, SW_SHOWNOACTIVATE};
+    if let Ok(hwnd) = w.hwnd() {
+        unsafe { let _ = ShowWindow(hwnd, if activate { SW_SHOW } else { SW_SHOWNOACTIVATE }); }
+    }
+}
+
+#[cfg(target_os = "windows")]
+fn raw_hide(w: &tauri::WebviewWindow) {
+    use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_HIDE};
+    if let Ok(hwnd) = w.hwnd() {
+        unsafe { let _ = ShowWindow(hwnd, SW_HIDE); }
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+fn raw_show(w: &tauri::WebviewWindow, _activate: bool) {
+    let _ = w.show();
+}
+
+#[cfg(not(target_os = "windows"))]
+fn raw_hide(w: &tauri::WebviewWindow) {
+    let _ = w.hide();
+}
+
 pub fn open_note(app: &AppHandle, note: &Note) -> tauri::Result<()> {
     let l = label(&note.id);
     if let Some(w) = app.get_webview_window(&l) {
-        w.show()?;
-        w.set_focus()?;
+        raw_show(&w, true);
+        let _ = w.set_focus();
         return Ok(());
     }
     let url = format!("index.html#/note?id={}", note.id);
@@ -59,38 +90,26 @@ pub fn open_note(app: &AppHandle, note: &Note) -> tauri::Result<()> {
 }
 
 pub fn show_note(app: &AppHandle, id: &str) -> tauri::Result<()> {
-    if let Some(w) = app.get_webview_window(&label(id)) { w.show()?; w.set_focus()?; }
+    if let Some(w) = app.get_webview_window(&label(id)) {
+        raw_show(&w, true);
+        let _ = w.set_focus();
+    }
     Ok(())
 }
 
 /// Show a note window WITHOUT stealing keyboard focus — used by the snooze
 /// re-pop so a reminder coming back doesn't interrupt what the user is doing.
-/// On Windows this uses `SW_SHOWNOACTIVATE`; the note still shows on top
-/// (always_on_top) but the currently-active window keeps focus. `show_note`
-/// (with set_focus) is still used for user-initiated actions like 显示全部.
 pub fn show_note_no_focus(app: &AppHandle, id: &str) -> tauri::Result<()> {
-    #[cfg(target_os = "windows")]
-    {
-        if let Some(w) = app.get_webview_window(&label(id)) {
-            use windows::Win32::UI::WindowsAndMessaging::{ShowWindow, SW_SHOWNOACTIVATE};
-            let hwnd = w.hwnd()?;
-            unsafe {
-                let _ = ShowWindow(hwnd, SW_SHOWNOACTIVATE);
-            }
-        }
-        return Ok(());
+    if let Some(w) = app.get_webview_window(&label(id)) {
+        raw_show(&w, false);
     }
-    #[cfg(not(target_os = "windows"))]
-    {
-        if let Some(w) = app.get_webview_window(&label(id)) {
-            w.show()?;
-        }
-        Ok(())
-    }
+    Ok(())
 }
 
 pub fn hide_note(app: &AppHandle, id: &str) -> tauri::Result<()> {
-    if let Some(w) = app.get_webview_window(&label(id)) { w.hide()?; }
+    if let Some(w) = app.get_webview_window(&label(id)) {
+        raw_hide(&w);
+    }
     Ok(())
 }
 
