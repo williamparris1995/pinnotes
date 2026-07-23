@@ -16,7 +16,6 @@ pub fn open_note(app: &AppHandle, note: &Note) -> tauri::Result<()> {
         .title("PinNote")
         .inner_size(note.w, note.h)
         .position(note.x, note.y)
-        .transparent(true)
         .decorations(false)
         .always_on_top(true)
         .skip_taskbar(true)
