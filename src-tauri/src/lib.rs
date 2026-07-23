@@ -32,7 +32,6 @@ pub fn run() {
                 db,
                 scheduler: snooze::SnoozeScheduler::new(),
                 drag_writes: std::sync::Mutex::new(std::collections::HashMap::new()),
-                acrylic_off: std::sync::Mutex::new(std::collections::HashSet::new()),
             });
             tray::build(app.handle())?;
             let state = app.state::<AppState>();

@@ -1,7 +1,5 @@
 use crate::db::{Note, NoteRepository};
 use crate::state::AppState;
-use tauri::utils::config::WindowEffectsConfig;
-use tauri::utils::{WindowEffect, WindowEffectState};
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
 
 fn label(id: &str) -> String { format!("note-{id}") }
@@ -23,28 +21,17 @@ pub fn open_note(app: &AppHandle, note: &Note) -> tauri::Result<()> {
         .always_on_top(true)
         .skip_taskbar(true)
         .resizable(false)
-        // Real frosted glass: CSS backdrop-filter can't blur the desktop
-        // through a transparent webview, so request an OS-level Acrylic
-        // effect. Acrylic works on Windows 10 (Mica is Win11-only, which is
-        // why we avoid it). The noteView's rgba tint still colors the glass.
-        .effects(WindowEffectsConfig {
-            effects: vec![WindowEffect::Acrylic],
-            state: Some(WindowEffectState::Active),
-            radius: None,
-            color: None,
-        })
+        // NOTE: no OS window effect (Acrylic). Acrylic + transparent +
+        // always_on_top + WebView2 froze the render process on Windows 10
+        // (clicks stopped responding), so notes are plain translucent cards
+        // (the rgba tint over the transparent window). Drag is smooth too.
         .build()?;
 
-    // Persist the note's logical position when the OS moves the window — but
-    // DEBOUNCED, and with the acrylic effect toggled for a smooth drag.
-    //
-    // Re-blurring the desktop behind an acrylic window every frame is what
-    // lags the drag on Windows, so on the FIRST Moved of a drag we disable
-    // acrylic (tracked in AppState.acrylic_off). ~250ms after the drag stops
-    // (no more Moved events) we persist the final position AND re-enable
-    // acrylic — the frosted look returns only while the note is still. Each
-    // event carries a PhysicalPosition, so divide by the scale factor to match
-    // the logical x/y used elsewhere.
+    // Persist the note's logical position when the OS moves the window —
+    // DEBOUNCED: Moved fires per pixel during a drag, so cancel the previous
+    // pending write and schedule one ~250ms later on a background task (no
+    // per-pixel SQLite writes on the main thread). The event carries a
+    // PhysicalPosition, so divide by the scale factor to match logical x/y.
     let app_handle = app.clone();
     let id = note.id.clone();
     let lbl = l.clone();
@@ -57,39 +44,15 @@ pub fn open_note(app: &AppHandle, note: &Note) -> tauri::Result<()> {
             let x = pos.x as f64 / scale;
             let y = pos.y as f64 / scale;
             let state = app_handle.state::<AppState>();
-            // Disable acrylic once at drag start (guarded so we don't re-call
-            // set_effects on every pixel).
-            {
-                let mut off = state.acrylic_off.lock().unwrap();
-                if !off.contains(&id) {
-                    if let Some(w) = app_handle.get_webview_window(&lbl) {
-                        let _ = w.set_effects(None);
-                    }
-                    off.insert(id.clone());
-                }
-            }
-            // Debounce: persist final position + restore acrylic after the drag
-            // settles, on a background task (no main-thread SQLite writes).
             let mut drag = state.drag_writes.lock().unwrap();
             if let Some(prev) = drag.remove(&id) {
                 prev.abort();
             }
             let app2 = app_handle.clone();
             let id2 = id.clone();
-            let lbl2 = lbl.clone();
             let handle = tauri::async_runtime::spawn(async move {
                 tokio::time::sleep(std::time::Duration::from_millis(250)).await;
-                let st = app2.state::<AppState>();
-                let _ = NoteRepository::update_position(&st.db, &id2, x, y);
-                if let Some(w) = app2.get_webview_window(&lbl2) {
-                    let _ = w.set_effects(Some(WindowEffectsConfig {
-                        effects: vec![WindowEffect::Acrylic],
-                        state: Some(WindowEffectState::Active),
-                        radius: None,
-                        color: None,
-                    }));
-                }
-                st.acrylic_off.lock().unwrap().remove(&id2);
+                let _ = NoteRepository::update_position(&app2.state::<AppState>().db, &id2, x, y);
             });
             drag.insert(id.clone(), handle);
         }
