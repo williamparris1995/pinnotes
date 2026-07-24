@@ -293,6 +293,23 @@ pub async fn apply_update(app: AppHandle, state: State<'_, AppState>) -> Result<
     Ok(())
 }
 
+/// 当前版本号(编译期取 Cargo.toml version)。
+#[tauri::command]
+pub fn get_version() -> &'static str {
+    env!("CARGO_PKG_VERSION")
+}
+
+/// 手动检查更新:重查一次、刷新缓存、返回最新版本号(Some = 有新版本)。
+#[tauri::command]
+pub async fn check_for_updates(
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<Option<String>, String> {
+    let v = fetch_update_version(&app).await?;
+    *state.update_status.lock().unwrap() = v.clone();
+    Ok(v)
+}
+
 // --- show_all: impl + command wrapper ----------------------------------------
 pub fn show_all_impl(app: &AppHandle, state: &AppState) -> Result<(), String> {
     for n in NoteRepository::active(&state.db)? {

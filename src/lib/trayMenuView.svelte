@@ -1,13 +1,16 @@
 <script lang="ts">
   // HTML 托盘菜单。结构/图标/颜色对齐 OD 原型。不透明 + 方角(Win10 上圆角必带毛玻璃边)。
-  // 有新版本时(Rust 启动后台查、缓存进 AppState),顶部加一条"新版本"项(见 ADR-0002)。
+  // 表头显示当前版本号;有新版本时顶部加"新版本"项;底部"检查更新"可手动查(见 ADR-0002)。
   import { onMount } from 'svelte';
   import { invoke, type Note } from './tauri';
   import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 
   const win = getCurrentWindow();
   let count = $state(0);
+  let version = $state('');
   let updateVersion = $state<string | null>(null);
+  // 'idle' | 'checking' | 'latest' —— 手动"检查更新"的反馈态。
+  let checkState = $state<'idle' | 'checking' | 'latest'>('idle');
 
   // 单条 SVG 内部路径(viewBox 0 0 24 24,stroke=currentColor),{@html} 注入。
   const P = {
@@ -21,13 +24,22 @@
     completed: '<circle cx="12" cy="12" r="9"/><polyline points="8 12 11 15 16 9"/>',
     settings:
       '<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9c.36.13.69.34 1 .6"/>',
+    refresh:
+      '<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>',
     quit: '<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>'
   };
+
+  const checkLabel = $derived(
+    checkState === 'checking' ? '检查中…' : checkState === 'latest' ? '已是最新 ✓' : '检查更新'
+  );
 
   onMount(() => {
     window.addEventListener('keydown', onKey);
     // 失焦兜底:点外部/切窗口时 webview 失焦 → 关窗(与 Rust 端 Focused(false) 双保险)。
     window.addEventListener('blur', () => win.close());
+    invoke<string>('get_version')
+      .then((v) => (version = v))
+      .catch(() => {});
     invoke<Note[]>('list_active')
       .then((a) => (count = a.length))
       .catch(() => {});
@@ -61,6 +73,21 @@
       /* 下载/安装/重启由 Rust 端处理 */
     }
   }
+  async function checkForUpdates() {
+    if (checkState === 'checking') return;
+    checkState = 'checking';
+    try {
+      const v = await invoke<string | null>('check_for_updates');
+      if (v) {
+        updateVersion = v; // 顶部"新版本"项出现
+        checkState = 'idle';
+      } else {
+        checkState = 'latest';
+      }
+    } catch {
+      checkState = 'idle';
+    }
+  }
 </script>
 
 <div class="menu" role="menu">
@@ -68,7 +95,7 @@
     <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html P.logo}</svg></span>
     <span class="htext">
       <span class="hname">PinNotes</span>
-      <span class="hsub">置顶便签提醒 · 已驻留</span>
+      <span class="hsub">置顶便签提醒{version ? ` · v${version}` : ''}</span>
     </span>
   </div>
 
@@ -104,6 +131,10 @@
   <button role="menuitem" onclick={() => act('settings')}>
     <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html P.settings}</svg></span>
     <span class="label">设置…</span>
+  </button>
+  <button role="menuitem" class="check" class:ok={checkState === 'latest'} disabled={checkState === 'checking'} onclick={checkForUpdates}>
+    <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html P.refresh}</svg></span>
+    <span class="label">{checkLabel}</span>
   </button>
   <button role="menuitem" class="danger" onclick={() => act('quit')}>
     <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html P.quit}</svg></span>
@@ -171,7 +202,8 @@
     text-align: left;
     width: 100%;
   }
-  button:hover { background: rgba(0, 0, 0, 0.06); }
+  button:hover:not(:disabled) { background: rgba(0, 0, 0, 0.06); }
+  button:disabled { cursor: default; opacity: 0.6; }
   .ico {
     width: 16px;
     height: 16px;
@@ -196,4 +228,6 @@
   .danger .ico { color: #c0392b; }
   .update { color: #4a6fa5; font-weight: 600; }
   .update .ico { color: #4a6fa5; }
+  .check.ok { color: #4caf90; }
+  .check.ok .ico { color: #4caf90; }
 </style>

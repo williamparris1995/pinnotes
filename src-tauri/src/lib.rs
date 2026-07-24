@@ -114,6 +114,8 @@ pub fn run() {
             commands::tray_menu_action,
             commands::get_update_status,
             commands::apply_update,
+            commands::get_version,
+            commands::check_for_updates,
             commands::show_all,
             commands::hide_all,
             commands::get_settings,
