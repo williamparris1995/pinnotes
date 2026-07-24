@@ -2,13 +2,14 @@
   import NoteView from './lib/noteView.svelte';
   import CompletedView from './lib/completedView.svelte';
   import SettingsView from './lib/settingsView.svelte';
+  import TrayMenuView from './lib/trayMenuView.svelte';
 
   let hash = $state(window.location.hash);
   window.addEventListener('hashchange', () => (hash = window.location.hash));
 
   const route = $derived(parse(hash));
   function parse(h: string): { name: string; id?: string } {
-    const m = h.match(/#\/(note|completed|settings)\??(.*)/);
+    const m = h.match(/#\/(note|completed|settings|traymenu)\??(.*)/);
     if (!m) return { name: 'blank' };
     const name = m[1];
     const id = new URLSearchParams(m[2]).get('id') ?? undefined;
@@ -22,6 +23,8 @@
   <CompletedView />
 {:else if route.name === 'settings'}
   <SettingsView />
+{:else if route.name === 'traymenu'}
+  <TrayMenuView />
 {:else}
   <div></div>
 {/if}

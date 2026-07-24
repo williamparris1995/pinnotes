@@ -1,7 +1,7 @@
-// PinNotes entry assembly (Task 10): wires every module into the Tauri
-// builder — SQLite init, shared AppState, tray menu, default autostart,
-// startup load (open active note windows, arm snooze for hidden-until-future
-// notes), tray menu dispatch, and the full command surface for the frontend.
+// PinNotes entry assembly: wires every module into the Tauri builder —
+// SQLite init, shared AppState, tray icon (left=new note, right=HTML menu),
+// Ctrl+N shortcut, default autostart, startup load (open active note windows,
+// arm snooze for hidden-until-future notes), and the command surface.
 
 mod autostart;
 mod commands;
@@ -10,11 +10,13 @@ mod geometry;
 mod snooze;
 mod state;
 mod tray;
+mod tray_menu;
 mod window_manager;
 
 use chrono::Utc;
 use state::AppState;
 use tauri::Manager;
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -23,6 +25,7 @@ pub fn run() {
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
             None,
         ))
+        .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .setup(|app| {
             let path = app.path().app_data_dir()?.join("pinnotes.sqlite");
             std::fs::create_dir_all(path.parent().unwrap())?;
@@ -34,6 +37,16 @@ pub fn run() {
                 drag_writes: std::sync::Mutex::new(std::collections::HashMap::new()),
             });
             tray::build(app.handle())?;
+            // 全局快捷键 Ctrl+N → 新建便签。运行时注册:若已被其他应用占用,
+            // 仅打印告警、不致启动失败(构建期注册会把 OS 错误上抛,让整个 app 起不来)。
+            if let Err(e) = app.global_shortcut().on_shortcut("ctrl+n", |ah, _s, ev| {
+                if ev.state == ShortcutState::Pressed {
+                    let state = ah.state::<AppState>();
+                    let _ = commands::new_note(ah, &state);
+                }
+            }) {
+                eprintln!("pinnotes: Ctrl+N not registered ({e:?}) — another app may own it");
+            }
             let state = app.state::<AppState>();
             // 默认开机自启：仅首次运行启用，之后尊重用户在设置中的选择。
             if commands::get_setting(&state.db, "autostart_configured")?.is_none() {
@@ -74,31 +87,6 @@ pub fn run() {
             }
             Ok(())
         })
-        .on_menu_event(|app, e| {
-            let id = e.id().as_ref();
-            match id {
-                "new" => {
-                    let state = app.state::<AppState>();
-                    let _ = commands::create_note_impl(app, &state);
-                }
-                "showAll" => {
-                    let state = app.state::<AppState>();
-                    let _ = commands::show_all_impl(app, &state);
-                }
-                "hideAll" => {
-                    let state = app.state::<AppState>();
-                    let _ = commands::hide_all_impl(app, &state);
-                }
-                "completed" => {
-                    let _ = open_simple(app, "completed");
-                }
-                "settings" => {
-                    let _ = open_simple(app, "settings");
-                }
-                "quit" => app.exit(0),
-                _ => {}
-            }
-        })
         .invoke_handler(tauri::generate_handler![
             commands::get_note,
             commands::create_note,
@@ -113,6 +101,8 @@ pub fn run() {
             commands::copy_note,
             commands::delete_note,
             commands::list_completed,
+            commands::list_active,
+            commands::tray_menu_action,
             commands::show_all,
             commands::hide_all,
             commands::get_settings,
@@ -129,26 +119,4 @@ pub fn run() {
 /// so it can move into the scheduler's `FnOnce` wake callback.
 fn commands_show(app: tauri::AppHandle, id: &str) -> Result<(), String> {
     commands::repop_note(&app, id)
-}
-
-/// Open one of the auxiliary single-instance windows (completed / settings).
-fn open_simple(app: &tauri::AppHandle, route: &str) -> tauri::Result<()> {
-    let label = route;
-    if app.get_webview_window(label).is_some() {
-        return Ok(());
-    }
-    tauri::WebviewWindowBuilder::new(
-        app,
-        label,
-        tauri::WebviewUrl::App(format!("index.html#/{route}").into()),
-    )
-    .title(if route == "completed" {
-        "已完成"
-    } else {
-        "设置"
-    })
-    .inner_size(420.0, 520.0)
-    .resizable(true)
-    .build()?;
-    Ok(())
 }

@@ -89,14 +89,6 @@ pub fn open_note(app: &AppHandle, note: &Note) -> tauri::Result<()> {
     Ok(())
 }
 
-pub fn show_note(app: &AppHandle, id: &str) -> tauri::Result<()> {
-    if let Some(w) = app.get_webview_window(&label(id)) {
-        raw_show(&w, true);
-        let _ = w.set_focus();
-    }
-    Ok(())
-}
-
 /// Show a note window WITHOUT stealing keyboard focus — used by the snooze
 /// re-pop so a reminder coming back doesn't interrupt what the user is doing.
 pub fn show_note_no_focus(app: &AppHandle, id: &str) -> tauri::Result<()> {
@@ -131,5 +123,26 @@ pub fn resize_note(app: &AppHandle, id: &str, w: f64, h: f64) -> tauri::Result<(
     if let Some(win) = app.get_webview_window(&label(id)) {
         win.set_size(LogicalSize::new(w, h))?;
     }
+    Ok(())
+}
+
+/// Open one of the auxiliary single-instance windows (completed / settings).
+pub fn open_aux(app: &AppHandle, route: &str) -> tauri::Result<()> {
+    if app.get_webview_window(route).is_some() {
+        return Ok(());
+    }
+    WebviewWindowBuilder::new(
+        app,
+        route,
+        WebviewUrl::App(format!("index.html#/{route}").into()),
+    )
+    .title(if route == "completed" {
+        "已完成"
+    } else {
+        "设置"
+    })
+    .inner_size(420.0, 520.0)
+    .resizable(true)
+    .build()?;
     Ok(())
 }

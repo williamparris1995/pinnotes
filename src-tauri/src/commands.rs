@@ -1,5 +1,5 @@
 // Tauri command layer: thin `#[tauri::command]` wrappers around plain
-// `*_impl` functions. The impl split lets `on_menu_event` (in lib.rs) reuse the
+// `*_impl` functions. The impl split lets the tray menu / shortcuts reuse the
 // same logic without going through the command dispatch convention.
 use crate::{
     autostart,
@@ -46,6 +46,11 @@ pub fn create_note_impl(app: &AppHandle, state: &AppState) -> Result<Note, Strin
 #[tauri::command]
 pub fn create_note(app: AppHandle, state: State<AppState>) -> Result<Note, String> {
     create_note_impl(&app, &state)
+}
+
+/// 新建便签。供托盘左键、全局 Ctrl+N、HTML 菜单"新建便签"三条入口共用。
+pub(crate) fn new_note(app: &AppHandle, state: &AppState) -> Result<Note, String> {
+    create_note_impl(app, state)
 }
 
 /// First-run welcome note: when `first_run_done` is unset, create a visible
@@ -214,12 +219,45 @@ pub fn list_completed(state: State<AppState>) -> Result<Vec<Note>, String> {
     NoteRepository::completed(&state.db)
 }
 
+#[tauri::command]
+pub fn list_active(state: State<AppState>) -> Result<Vec<Note>, String> {
+    NoteRepository::active(&state.db)
+}
+
+/// HTML 托盘菜单点项后的统一入口:执行动作,再关掉菜单窗。
+/// 必须 async:同步命令在主线程跑,而 new/open_aux 会 build 窗口,
+/// 主线程 IPC handler 里 build 会死锁(同 reactivate 的坑)。
+#[tauri::command]
+pub async fn tray_menu_action(
+    action: String,
+    app: AppHandle,
+    state: State<'_, AppState>,
+) -> Result<(), String> {
+    match action.as_str() {
+        "new" => {
+            new_note(&app, &state)?;
+        }
+        "showAll" => show_all_impl(&app, &state)?,
+        "hideAll" => hide_all_impl(&app, &state)?,
+        "completed" => window_manager::open_aux(&app, "completed").map_err(|e| e.to_string())?,
+        "settings" => window_manager::open_aux(&app, "settings").map_err(|e| e.to_string())?,
+        "quit" => app.exit(0),
+        _ => {}
+    }
+    if let Some(w) = app.get_webview_window("traymenu") {
+        let _ = w.close();
+    }
+    Ok(())
+}
+
 // --- show_all: impl + command wrapper ----------------------------------------
 pub fn show_all_impl(app: &AppHandle, state: &AppState) -> Result<(), String> {
     for n in NoteRepository::active(&state.db)? {
         NoteRepository::clear_snooze(&state.db, &n.id)?;
         state.scheduler.cancel(&n.id);
-        window_manager::show_note(app, &n.id).map_err(|e| e.to_string())?;
+        // 用 open_note 而非 show_note:隐藏便签可能根本没有窗口(启动加载会跳过
+        // 未到期的隐藏便签开窗)。open_note 对无窗的会新建、对已存在隐藏窗的会重显。
+        window_manager::open_note(app, &n).map_err(|e| e.to_string())?;
     }
     Ok(())
 }
@@ -319,7 +357,7 @@ fn settings_map(state: &AppState) -> Result<std::collections::HashMap<String, St
 /// window — `available_monitors()` reports the whole system list, not just the
 /// one the window sits on, so any window suffices. Falls back to the raw
 /// coordinates when no window exists yet or the monitor list is unavailable.
-fn clamp_note(app: &AppHandle, x: f64, y: f64, w: f64, h: f64) -> (f64, f64) {
+pub(crate) fn clamp_note(app: &AppHandle, x: f64, y: f64, w: f64, h: f64) -> (f64, f64) {
     let Some(win) = app.webview_windows().into_values().next() else {
         return (x, y);
     };
