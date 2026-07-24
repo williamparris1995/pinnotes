@@ -36,7 +36,7 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDFFMkYwMUYwMDc0N0QxMEMKUldRTTBVY0g4QUV2SHQ3NlltM004QWlGVGs3N0RwTWZrRXJCb0I5S2xtbXVURXJ6djd0Z1hyVUQK",
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDhDOTc4MTI5MjBFQ0QzMkEKUldRcTArd2dLWUdYakh0b0tiNndDWXEya1ZJcXZXWThZRDU1bEtaeDV0VzdreG1mVFg1VXdFT1YK",
       "endpoints": [
         "https://github.com/williamparris1995/pinnotes/releases/latest/download/latest.json"
       ]
