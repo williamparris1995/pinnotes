@@ -11,6 +11,7 @@ use crate::{
 use chrono::Utc;
 use std::time::Duration;
 use tauri::{AppHandle, Manager, State};
+use tauri_plugin_updater::UpdaterExt;
 use uuid::Uuid;
 
 fn now_iso() -> String {
@@ -247,6 +248,48 @@ pub async fn tray_menu_action(
     if let Some(w) = app.get_webview_window("traymenu") {
         let _ = w.close();
     }
+    Ok(())
+}
+
+// --- 自动更新(见 ADR-0002;Rust 中心化,tray 菜单只调下面命令)---
+
+/// 查更新,有则返回最新版本号。startup 后台调一次,缓存进 AppState.update_status。
+pub(crate) async fn fetch_update_version(app: &AppHandle) -> Result<Option<String>, String> {
+    match app
+        .updater()
+        .map_err(|e| e.to_string())?
+        .check()
+        .await
+        .map_err(|e| e.to_string())?
+    {
+        Some(u) => Ok(Some(u.version)),
+        None => Ok(None),
+    }
+}
+
+#[tauri::command]
+pub fn get_update_status(state: State<AppState>) -> Option<String> {
+    state.update_status.lock().unwrap().clone()
+}
+
+/// 执行更新:再查一次 → 下载安装 → 重启。
+/// Windows: download_and_install 拉起 installer 后 exit(),request_restart 走不到;
+/// macOS/Linux: 原地替换后返回 → request_restart 重启。
+#[tauri::command]
+pub async fn apply_update(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    let update = app
+        .updater()
+        .map_err(|e| e.to_string())?
+        .check()
+        .await
+        .map_err(|e| e.to_string())?
+        .ok_or("no update available")?;
+    *state.update_status.lock().unwrap() = None;
+    update
+        .download_and_install(|_len, _total| {}, || {})
+        .await
+        .map_err(|e| e.to_string())?;
+    app.request_restart();
     Ok(())
 }
 

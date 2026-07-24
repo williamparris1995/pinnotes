@@ -1,15 +1,17 @@
 <script lang="ts">
-  // HTML 托盘菜单。结构/图标/颜色对齐 OD 原型。透明窗 + 圆角卡(不上 OS acrylic,
-  // 隔离冻结变量)。挂载后量内容高度把窗口收到刚好,去掉底部空白。
+  // HTML 托盘菜单。结构/图标/颜色对齐 OD 原型。不透明 + 方角(Win10 上圆角必带毛玻璃边)。
+  // 有新版本时(Rust 启动后台查、缓存进 AppState),顶部加一条"新版本"项(见 ADR-0002)。
   import { onMount } from 'svelte';
   import { invoke, type Note } from './tauri';
   import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 
   const win = getCurrentWindow();
   let count = $state(0);
+  let updateVersion = $state<string | null>(null);
 
   // 单条 SVG 内部路径(viewBox 0 0 24 24,stroke=currentColor),{@html} 注入。
   const P = {
+    update: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
     logo: '<path d="M12 17v5"/><path d="M9 3h6l-1 7 3 3v2H7v-2l3-3-1-7z"/>',
     new: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
     showall:
@@ -28,6 +30,9 @@
     window.addEventListener('blur', () => win.close());
     invoke<Note[]>('list_active')
       .then((a) => (count = a.length))
+      .catch(() => {});
+    invoke<string | null>('get_update_status')
+      .then((v) => (updateVersion = v))
       .catch(() => {});
     // 量内容高度,把窗口收到刚好(卡满窗 margin 0,去掉底部空白 + 滚动轴)。
     requestAnimationFrame(() => {
@@ -49,6 +54,13 @@
       /* 窗口可能在 await 期间被关,忽略 */
     }
   }
+  async function applyUpdate() {
+    try {
+      await invoke('apply_update');
+    } catch {
+      /* 下载/安装/重启由 Rust 端处理 */
+    }
+  }
 </script>
 
 <div class="menu" role="menu">
@@ -59,6 +71,14 @@
       <span class="hsub">置顶便签提醒 · 已驻留</span>
     </span>
   </div>
+
+  {#if updateVersion}
+    <button role="menuitem" class="update" onclick={applyUpdate}>
+      <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html P.update}</svg></span>
+      <span class="label">新版本 v{updateVersion},点击更新</span>
+    </button>
+    <div class="sep"></div>
+  {/if}
 
   <button role="menuitem" onclick={() => act('new')}>
     <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html P.new}</svg></span>
@@ -174,4 +194,6 @@
   .sep { height: 1px; background: rgba(0, 0, 0, 0.08); margin: 4px 8px; }
   .danger { color: #c0392b; }
   .danger .ico { color: #c0392b; }
+  .update { color: #4a6fa5; font-weight: 600; }
+  .update .ico { color: #4a6fa5; }
 </style>

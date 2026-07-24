@@ -26,6 +26,7 @@ pub fn run() {
             None,
         ))
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let path = app.path().app_data_dir()?.join("pinnotes.sqlite");
             std::fs::create_dir_all(path.parent().unwrap())?;
@@ -35,6 +36,7 @@ pub fn run() {
                 db,
                 scheduler: snooze::SnoozeScheduler::new(),
                 drag_writes: std::sync::Mutex::new(std::collections::HashMap::new()),
+                update_status: std::sync::Mutex::new(None),
             });
             tray::build(app.handle())?;
             // 全局快捷键 Ctrl+N → 新建便签。运行时注册:若已被其他应用占用,
@@ -85,6 +87,13 @@ pub fn run() {
                 }
                 window_manager::open_note(app.handle(), &n)?;
             }
+            // 启动后台查一次自动更新(见 ADR-0002);有新版则缓存版本号,tray 菜单据此提示。
+            let ah = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Ok(Some(v)) = commands::fetch_update_version(&ah).await {
+                    *ah.state::<AppState>().update_status.lock().unwrap() = Some(v);
+                }
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -103,6 +112,8 @@ pub fn run() {
             commands::list_completed,
             commands::list_active,
             commands::tray_menu_action,
+            commands::get_update_status,
+            commands::apply_update,
             commands::show_all,
             commands::hide_all,
             commands::get_settings,
