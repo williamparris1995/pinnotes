@@ -113,7 +113,7 @@
         <span class="hname">PinNotes</span>
         {#if version}<span class="hver">v{version}</span>{/if}
       </span>
-      <span class="hsub">置顶便签提醒 · 已驻留</span>
+      <span class="hsub">让重要的事,一直留在眼前</span>
     </span>
   </div>
 

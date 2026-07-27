@@ -54,7 +54,7 @@ jobs:
         with:
           tagName: ${{ github.ref_name }}
           releaseName: 'PinNotes ${{ github.ref_name }}'
-          releaseBody: 'See the assets below to download the installer for your platform.'
+          releaseBody: '**更新日志 / Changelog**: https://github.com/williamparris1995/pinnotes/blob/main/CHANGELOG.md'
           releaseDraft: false
           prerelease: false
           updaterJsonPreferNsis: true
