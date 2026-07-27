@@ -1,6 +1,6 @@
 [package]
 name = "pinnotes"
-version = "0.4.1"
+version = "0.4.2"
 description = "PinNotes — always-on-top sticky-note reminders"
 authors = ["buhiyo"]
 edition = "2021"
