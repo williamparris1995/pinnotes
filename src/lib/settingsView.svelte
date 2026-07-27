@@ -38,20 +38,6 @@
 <main>
   <div class="set-row">
     <div>
-      <div class="set-label">{t('settings.snoozeLabel')}</div>
-      <div class="set-hint">{t('settings.snoozeHint')}</div>
-    </div>
-    <div class="set-controls">
-      <div class="seg">
-        {#each opts as m}
-          <button type="button" class="seg-opt" class:active={snooze === m} onclick={() => setSnooze(m)}>{m}</button>
-        {/each}
-      </div>
-      <span class="seg-suffix">{t('settings.minutesSuffix')}</span>
-    </div>
-  </div>
-  <div class="set-row">
-    <div>
       <div class="set-label">{t('settings.autostartLabel')}</div>
       <div class="set-hint">{t('settings.autostartHint')}</div>
     </div>
@@ -65,6 +51,20 @@
       onclick={() => setAuto(!auto)}
       onkeydown={onToggleKey}
     ></div>
+  </div>
+  <div class="set-row">
+    <div>
+      <div class="set-label">{t('settings.snoozeLabel')}</div>
+      <div class="set-hint">{t('settings.snoozeHint')}</div>
+    </div>
+    <div class="set-controls">
+      <div class="seg">
+        {#each opts as m}
+          <button type="button" class="seg-opt" class:active={snooze === m} onclick={() => setSnooze(m)}>{m}</button>
+        {/each}
+      </div>
+      <span class="seg-suffix">{t('settings.minutesSuffix')}</span>
+    </div>
   </div>
   <div class="set-row">
     <div>
