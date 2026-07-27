@@ -2,13 +2,15 @@
   // HTML 托盘菜单。结构/图标/颜色对齐 OD 原型。不透明 + 方角(Win10 上圆角必带毛玻璃边)。
   // 表头显示当前版本号;有新版本时顶部加"新版本"项;底部"检查更新"可手动查(见 ADR-0002)。
   import { onMount } from 'svelte';
-  import { invoke, type Note } from './tauri';
+  import { invoke, listen, type Note } from './tauri';
   import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
 
   const win = getCurrentWindow();
   let count = $state(0);
   let version = $state('');
   let updateVersion = $state<string | null>(null);
+  let updating = $state(false);
+  let progress = $state<{ d: number; t: number | null } | null>(null);
   // 'idle' | 'checking' | 'latest' —— 手动"检查更新"的反馈态。
   let checkState = $state<'idle' | 'checking' | 'latest'>('idle');
 
@@ -34,6 +36,11 @@
   const checkLabel = $derived(
     checkState === 'checking' ? '检查中…' : checkState === 'latest' ? '已是最新 ✓' : '检查更新'
   );
+  const updateLabel = $derived(
+    updating
+      ? `更新中…${progress && progress.t ? ` ${Math.round((progress.d / progress.t) * 100)}%` : ''}`
+      : `新版本 v${updateVersion},点击更新`
+  );
 
   onMount(() => {
     window.addEventListener('keydown', onKey);
@@ -48,6 +55,9 @@
     invoke<string | null>('get_update_status')
       .then((v) => (updateVersion = v))
       .catch(() => {});
+    listen<{ downloaded: number; total: number | null }>('update-progress', (e) => {
+      progress = { d: e.payload.downloaded, t: e.payload.total };
+    }).catch(() => {});
     // 量内容高度,把窗口收到刚好(卡满窗 margin 0,去掉底部空白 + 滚动轴)。
     requestAnimationFrame(() => {
       const el = document.querySelector('.menu');
@@ -69,10 +79,13 @@
     }
   }
   async function applyUpdate() {
+    if (updating) return;
+    updating = true;
     try {
       await invoke('apply_update');
+      // macOS/Linux:request_restart 重启;Windows:进程已被 installer 接管退出。
     } catch {
-      /* 下载/安装/重启由 Rust 端处理 */
+      updating = false; // 失败:放开,允许重试
     }
   }
   async function checkForUpdates() {
@@ -105,9 +118,9 @@
   </div>
 
   {#if updateVersion}
-    <button role="menuitem" class="update" onclick={applyUpdate}>
+    <button role="menuitem" class="update" disabled={updating} onclick={applyUpdate}>
       <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html P.update}</svg></span>
-      <span class="label">新版本 v{updateVersion},点击更新</span>
+      <span class="label">{updateLabel}</span>
     </button>
     <div class="sep"></div>
   {/if}

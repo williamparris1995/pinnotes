@@ -37,6 +37,7 @@ pub fn run() {
                 scheduler: snooze::SnoozeScheduler::new(),
                 drag_writes: std::sync::Mutex::new(std::collections::HashMap::new()),
                 update_status: std::sync::Mutex::new(None),
+                updating: std::sync::Mutex::new(false),
             });
             tray::build(app.handle())?;
             // 全局快捷键 Ctrl+N → 新建便签。运行时注册:若已被其他应用占用,

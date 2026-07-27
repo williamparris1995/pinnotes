@@ -9,8 +9,8 @@ use crate::{
     window_manager,
 };
 use chrono::Utc;
-use std::time::Duration;
-use tauri::{AppHandle, Manager, State};
+use std::time::{Duration, Instant};
+use tauri::{AppHandle, Emitter, Manager, State};
 use tauri_plugin_updater::UpdaterExt;
 use uuid::Uuid;
 
@@ -272,11 +272,28 @@ pub fn get_update_status(state: State<AppState>) -> Option<String> {
     state.update_status.lock().unwrap().clone()
 }
 
+#[derive(serde::Serialize, Clone)]
+struct UpdateProgress {
+    downloaded: u64,
+    total: Option<u64>,
+}
+
 /// 执行更新:再查一次 → 下载安装 → 重启。
+/// - 防重复:`state.updating` 标志,已在更新中则直接返回(连点/菜单重开都不会再起一次)。
+/// - 进度:下载期间 throttled(~150ms)发 `update-progress` 事件给前端显示百分比。
 /// Windows: download_and_install 拉起 installer 后 exit(),request_restart 走不到;
 /// macOS/Linux: 原地替换后返回 → request_restart 重启。
 #[tauri::command]
 pub async fn apply_update(app: AppHandle, state: State<'_, AppState>) -> Result<(), String> {
+    {
+        let mut g = state.updating.lock().unwrap();
+        if *g {
+            return Ok(());
+        }
+        *g = true;
+    }
+    *state.update_status.lock().unwrap() = None;
+
     let update = app
         .updater()
         .map_err(|e| e.to_string())?
@@ -284,13 +301,41 @@ pub async fn apply_update(app: AppHandle, state: State<'_, AppState>) -> Result<
         .await
         .map_err(|e| e.to_string())?
         .ok_or("no update available")?;
-    *state.update_status.lock().unwrap() = None;
-    update
-        .download_and_install(|_len, _total| {}, || {})
-        .await
-        .map_err(|e| e.to_string())?;
-    app.request_restart();
-    Ok(())
+
+    let app_cb = app.clone();
+    let mut downloaded: u64 = 0;
+    let mut last_emit: Option<Instant> = None;
+    let res = update
+        .download_and_install(
+            move |chunk_len, content_len| {
+                downloaded += chunk_len as u64;
+                let now = Instant::now();
+                let fire =
+                    last_emit.map_or(true, |t| now.duration_since(t) > Duration::from_millis(150));
+                if fire {
+                    last_emit = Some(now);
+                    let _ = app_cb.emit(
+                        "update-progress",
+                        UpdateProgress {
+                            downloaded,
+                            total: content_len,
+                        },
+                    );
+                }
+            },
+            || {},
+        )
+        .await;
+    match res {
+        Ok(()) => {
+            app.request_restart();
+            Ok(())
+        }
+        Err(e) => {
+            *state.updating.lock().unwrap() = false; // 失败:放开,允许重试
+            Err(format!("{e:?}"))
+        }
+    }
 }
 
 /// 当前版本号(编译期取 Cargo.toml version)。

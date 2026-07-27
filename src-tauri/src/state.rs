@@ -15,4 +15,6 @@ pub struct AppState {
     /// 启动后台查到的最新版本号(Some = 有新版本;None = 无/未查到)。
     /// tray 菜单读它决定是否显示"新版本"项(见 ADR-0002)。
     pub update_status: Mutex<Option<String>>,
+    /// 更新进行中标志(防重复触发 apply_update)。
+    pub updating: Mutex<bool>,
 }
