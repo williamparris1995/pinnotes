@@ -48,6 +48,7 @@ jobs:
 
       - name: Extract this version's notes from CHANGELOG.md
         id: notes
+        shell: bash
         run: |
           ver="${GITHUB_REF_NAME#v}"
           {
