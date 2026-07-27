@@ -2,6 +2,14 @@
 
 PinNotes 各版本变更。安装包与自动更新清单(`latest.json`)发布在 [GitHub Releases](https://github.com/williamparris1995/pinnotes/releases)。
 
+## 0.5.0
+
+- **国际化(i18n)**:中英文切换。**默认英文**;老用户升级保留中文。语言选择器在设置页。
+- 轻量自研 i18n(无第三方依赖,`src/lib/i18n.svelte.ts` + en/zh 字典):便签 / 已完成 / 设置 / 托盘菜单随语言即时翻转。
+- Rust:欢迎便签内容 + aux 窗口标题(Completed / Settings)按语言。
+- 设置页顺序调整:**开机自启 / Launch on startup** 移到第一项。
+- 发版说明改为自动从 CHANGELOG.md 提取本版本内容写入 Release 正文(此前是指向 CHANGELOG 的链接)。
+
 ## 0.4.3
 
 - **更新体验**:点击"更新"后实时显示**下载进度**(更新中… X%),并**防止重复点击**(按钮即时禁用 + 后端标志兜底——连点或重开菜单都不会触发第二次下载/安装)。
