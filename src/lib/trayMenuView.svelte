@@ -12,10 +12,12 @@
   // 'idle' | 'checking' | 'latest' —— 手动"检查更新"的反馈态。
   let checkState = $state<'idle' | 'checking' | 'latest'>('idle');
 
+  // 品牌图标(OD 设计的便签+图钉,源在 src-tauri/icons/icon.svg),整张 {@html} 注入。
+  const brandIcon = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256"><defs><filter id="noteShadow" x="-10%" y="-10%" width="120%" height="135%"><feGaussianBlur in="SourceAlpha" stdDeviation="4"/><feOffset dx="0" dy="6"/><feComponentTransfer><feFuncA type="linear" slope="0.22"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter><radialGradient id="pinGrad" cx="35%" cy="32%" r="72%"><stop offset="0%" stop-color="#7fa3d8"/><stop offset="55%" stop-color="#4a6fa5"/><stop offset="100%" stop-color="#3a5a8a"/></radialGradient><linearGradient id="foldGrad" x1="100%" y1="100%" x2="0%" y2="0%"><stop offset="0%" stop-color="#c9a838"/><stop offset="100%" stop-color="#e0bc4a"/></linearGradient></defs><g filter="url(#noteShadow)"><rect x="32" y="104" width="192" height="124" rx="8" fill="#ffe678"/></g><path d="M 200 228 L 216 228 Q 224 228 224 220 L 224 204 Z" fill="url(#foldGrad)"/><g stroke="#c9a838" stroke-width="4" stroke-linecap="round" opacity="0.4"><line x1="56" y1="148" x2="200" y2="148"/><line x1="56" y1="176" x2="176" y2="176"/><line x1="56" y1="204" x2="156" y2="204"/></g><ellipse cx="128" cy="110" rx="24" ry="4" fill="#000" opacity="0.28"/><polygon points="122,88 134,88 130,108 126,108" fill="#2c4470"/><circle cx="128" cy="66" r="26" fill="url(#pinGrad)"/><ellipse cx="119" cy="56" rx="10" ry="6" fill="#ffffff" opacity="0.7"/></svg>`;
+
   // 单条 SVG 内部路径(viewBox 0 0 24 24,stroke=currentColor),{@html} 注入。
   const P = {
     update: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
-    logo: '<path d="M12 17v5"/><path d="M9 3h6l-1 7 3 3v2H7v-2l3-3-1-7z"/>',
     new: '<line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>',
     showall:
       '<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
@@ -92,10 +94,13 @@
 
 <div class="menu" role="menu">
   <div class="head">
-    <span class="logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html P.logo}</svg></span>
+    <span class="logo" aria-label="PinNotes">{@html brandIcon}</span>
     <span class="htext">
-      <span class="hname">PinNotes</span>
-      <span class="hsub">置顶便签提醒{version ? ` · v${version}` : ''}</span>
+      <span class="hrow">
+        <span class="hname">PinNotes</span>
+        {#if version}<span class="hver">v{version}</span>{/if}
+      </span>
+      <span class="hsub">置顶便签提醒 · 已驻留</span>
     </span>
   </div>
 
@@ -173,19 +178,18 @@
     margin-bottom: 4px;
   }
   .logo {
-    width: 22px;
-    height: 22px;
+    width: 24px;
+    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(145deg, #5b82c0, #4a6fa5);
-    border-radius: 5px;
-    color: #fff;
     flex-shrink: 0;
   }
-  .logo :global(svg) { width: 13px; height: 13px; }
+  .logo :global(svg) { width: 24px; height: 24px; }
   .htext { display: flex; flex-direction: column; }
+  .hrow { display: flex; align-items: baseline; gap: 6px; }
   .hname { font-size: 13px; font-weight: 600; }
+  .hver { font-size: 11px; color: #8a8a96; font-weight: 500; }
   .hsub { font-size: 11px; color: #8a8a96; margin-top: 1px; }
 
   button {
