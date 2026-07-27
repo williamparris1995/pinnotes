@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { invoke, type Note } from './tauri';
+  import { t } from './i18n.svelte';
   import { getCurrentWindow } from '@tauri-apps/api/window';
 
   let { id }: { id: string } = $props();
@@ -11,14 +12,9 @@
   let pendingComplete = $state(false);
   let completeTimer: ReturnType<typeof setTimeout> | null = null;
 
-  // #3/#4: color presets (match the .note-yellow/pink/blue/green CSS) and the
-  // two size presets (普通 = 240×170 default, 大号 = 360×260).
-  const COLORS = [
-    { id: 'yellow', label: '黄' },
-    { id: 'pink', label: '粉' },
-    { id: 'blue', label: '蓝' },
-    { id: 'green', label: '绿' },
-  ] as const;
+  // #3/#4: color presets (match the .note-yellow/pink/blue/green CSS). Labels
+  // are localized via t(`note.color.${id}`).
+  const COLORS = ['yellow', 'pink', 'blue', 'green'] as const;
   const SIZE_NORMAL = { w: 240, h: 170 };
   const SIZE_LARGE = { w: 360, h: 260 };
   // #2: per-note hide duration cycled in the toolbar; takes effect on next 隐藏.
@@ -126,35 +122,35 @@
 </script>
 
 {#if loadError}
-  <div class="note note-error">无法加载便签</div>
+  <div class="note note-error">{t('note.loadError')}</div>
 {:else if note}
   <article class="note note-{note.color}">
     <div
       class="note-grip"
       role="button"
       tabindex="0"
-      aria-label="拖动"
+      aria-label={t('note.drag')}
       onpointerdown={() => getCurrentWindow().startDragging()}
     ></div>
     <div class="note-toolbar">
       <div class="color-dots">
-        {#each COLORS as c (c.id)}
+        {#each COLORS as cid (cid)}
           <button
             type="button"
-            class="color-dot color-dot-{c.id}"
-            class:active={note.color === c.id}
-            aria-label="颜色：{c.label}"
-            aria-pressed={note.color === c.id}
-            onclick={() => setColor(c.id)}
+            class="color-dot color-dot-{cid}"
+            class:active={note.color === cid}
+            aria-label={t('note.colorAria', { label: t(`note.color.${cid}`) })}
+            aria-pressed={note.color === cid}
+            onclick={() => setColor(cid)}
           ></button>
         {/each}
       </div>
       <div class="toolbar-tools">
-        <button type="button" class="size-btn" title="隐藏时长（分钟）" onclick={cycleSnooze}>
-          {note.snooze_minutes}分
+        <button type="button" class="size-btn" title={t('note.snoozeTitle')} onclick={cycleSnooze}>
+          {t('note.snoozeMinutes', { count: note.snooze_minutes })}
         </button>
         <button type="button" class="size-btn" onclick={toggleSize}>
-          {isLarge ? '小' : '大'}
+          {isLarge ? t('note.sizeSmall') : t('note.sizeLarge')}
         </button>
       </div>
     </div>
@@ -164,23 +160,23 @@
         bind:this={taRef}
         oninput={onInput}
         onfocusout={commit}
-        placeholder="输入提醒内容…"
+        placeholder={t('note.placeholder')}
       ></textarea>
     </div>
     {#if pendingComplete}
       <div class="note-toast" role="status">
-        <span>已完成</span>
-        <button type="button" class="toast-undo" onclick={undoComplete}>撤销</button>
+        <span>{t('note.completedToast')}</span>
+        <button type="button" class="toast-undo" onclick={undoComplete}>{t('note.undo')}</button>
       </div>
     {/if}
     <div class="note-actions">
       <button class="note-btn" onclick={() => invoke('hide_note', { id })}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><polyline points="12 7 12 12 15 14"/></svg>
-        隐藏
+        {t('note.hide')}
       </button>
       <button class="note-btn note-btn--done" onclick={onComplete}>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
-        完成
+        {t('note.complete')}
       </button>
     </div>
   </article>

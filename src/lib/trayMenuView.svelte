@@ -1,9 +1,11 @@
 <script lang="ts">
   // HTML 托盘菜单。结构/图标/颜色对齐 OD 原型。不透明 + 方角(Win10 上圆角必带毛玻璃边)。
-  // 表头显示当前版本号;有新版本时顶部加"新版本"项;底部"检查更新"可手动查(见 ADR-0002)。
+  // 表头显示当前版本号 + slogan;有新版本时顶部加"新版本"项;底部"检查更新"可手动查。
+  // 文案走 i18n(t),随 locale 切换。
   import { onMount } from 'svelte';
   import { invoke, listen, type Note } from './tauri';
   import { getCurrentWindow, LogicalSize } from '@tauri-apps/api/window';
+  import { t } from './i18n.svelte';
 
   const win = getCurrentWindow();
   let count = $state(0);
@@ -34,12 +36,18 @@
   };
 
   const checkLabel = $derived(
-    checkState === 'checking' ? '检查中…' : checkState === 'latest' ? '已是最新 ✓' : '检查更新'
+    checkState === 'checking'
+      ? t('tray.checking')
+      : checkState === 'latest'
+        ? t('tray.upToDate')
+        : t('tray.checkUpdates')
   );
   const updateLabel = $derived(
     updating
-      ? `更新中…${progress && progress.t ? ` ${Math.round((progress.d / progress.t) * 100)}%` : ''}`
-      : `新版本 v${updateVersion},点击更新`
+      ? progress && progress.t
+        ? t('tray.updating', { pct: Math.round((progress.d / progress.t) * 100) })
+        : t('tray.updatingPlain')
+      : t('tray.updateAvailable', { version: updateVersion ?? '' })
   );
 
   onMount(() => {
@@ -113,7 +121,7 @@
         <span class="hname">PinNotes</span>
         {#if version}<span class="hver">v{version}</span>{/if}
       </span>
-      <span class="hsub">让重要的事,一直留在眼前</span>
+      <span class="hsub">{t('tray.tagline')}</span>
     </span>
   </div>
 
@@ -127,28 +135,28 @@
 
   <button role="menuitem" onclick={() => act('new')}>
     <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html P.new}</svg></span>
-    <span class="label">新建便签</span>
+    <span class="label">{t('tray.newNote')}</span>
     <span class="kbd">Ctrl+N</span>
   </button>
   <button role="menuitem" onclick={() => act('showAll')}>
     <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html P.showall}</svg></span>
-    <span class="label">显示全部</span>
+    <span class="label">{t('tray.showAll')}</span>
     <span class="badge">{count}</span>
   </button>
   <button role="menuitem" onclick={() => act('hideAll')}>
     <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html P.hideall}</svg></span>
-    <span class="label">隐藏全部</span>
+    <span class="label">{t('tray.hideAll')}</span>
   </button>
   <button role="menuitem" onclick={() => act('completed')}>
     <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html P.completed}</svg></span>
-    <span class="label">已完成…</span>
+    <span class="label">{t('tray.completed')}</span>
   </button>
 
   <div class="sep"></div>
 
   <button role="menuitem" onclick={() => act('settings')}>
     <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html P.settings}</svg></span>
-    <span class="label">设置…</span>
+    <span class="label">{t('tray.settings')}</span>
   </button>
   <button role="menuitem" class="check" class:ok={checkState === 'latest'} disabled={checkState === 'checking'} onclick={checkForUpdates}>
     <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html P.refresh}</svg></span>
@@ -156,7 +164,7 @@
   </button>
   <button role="menuitem" class="danger" onclick={() => act('quit')}>
     <span class="ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">{@html P.quit}</svg></span>
-    <span class="label">退出</span>
+    <span class="label">{t('tray.quit')}</span>
   </button>
 </div>
 

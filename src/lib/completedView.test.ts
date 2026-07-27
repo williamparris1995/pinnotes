@@ -1,11 +1,15 @@
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import CompletedView from './completedView.svelte';
+import { setLocale } from './i18n.svelte';
 
 vi.mock('./tauri', () => ({ invoke: vi.fn(), listen: vi.fn() }));
 
 describe('CompletedView', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    setLocale('zh');
+    vi.clearAllMocks();
+  });
   it('shows empty hint', async () => {
     const { invoke } = await import('./tauri');
     (invoke as any).mockResolvedValue([]);

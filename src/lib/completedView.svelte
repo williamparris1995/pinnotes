@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { invoke, type Note } from './tauri';
+  import { t } from './i18n.svelte';
 
   // Prototype pinnotes-8c76 · Section 02 CompletedWindow: each row is a color
   // swatch + truncated text + completed time + 2 icon actions
@@ -8,7 +9,7 @@
   let items = $state<Note[]>([]);
   onMount(async () => (items = await invoke<Note[]>('list_completed')));
 
-  // Match the prototype's "今天 HH:MM" / "昨天 HH:MM" timestamps.
+  // Match the prototype's "今天 HH:MM" / "昨天 HH:MM" timestamps (localized).
   function fmtTime(iso: string | null): string {
     if (!iso) return '';
     const d = new Date(iso);
@@ -16,11 +17,11 @@
     const now = new Date();
     const hh = String(d.getHours()).padStart(2, '0');
     const mm = String(d.getMinutes()).padStart(2, '0');
-    if (d.toDateString() === now.toDateString()) return `今天 ${hh}:${mm}`;
+    if (d.toDateString() === now.toDateString()) return t('completed.today', { hh, mm });
     const yest = new Date(now);
     yest.setDate(now.getDate() - 1);
-    if (d.toDateString() === yest.toDateString()) return `昨天 ${hh}:${mm}`;
-    return `${d.getMonth() + 1}月${d.getDate()}日 ${hh}:${mm}`;
+    if (d.toDateString() === yest.toDateString()) return t('completed.yesterday', { hh, mm });
+    return t('completed.dateMD', { m: d.getMonth() + 1, d: d.getDate(), hh, mm });
   }
 
   // reactivate (bring the note back to active) + delete. Copy was removed —
@@ -42,10 +43,10 @@
       <span class="done-text" title={it.content}>{it.content}</span>
       <span class="done-time">{fmtTime(it.completed_at)}</span>
       <div class="done-actions">
-        <button type="button" class="done-act" title="重新激活" aria-label="重新激活" onclick={() => reactivate(it)}>
+        <button type="button" class="done-act" title={t('completed.reactivate')} aria-label={t('completed.reactivate')} onclick={() => reactivate(it)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 14"/></svg>
         </button>
-        <button type="button" class="done-act danger" title="删除" aria-label="删除" onclick={() => deleteNote(it)}>
+        <button type="button" class="done-act danger" title={t('completed.delete')} aria-label={t('completed.delete')} onclick={() => deleteNote(it)}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
         </button>
       </div>
@@ -55,7 +56,7 @@
     <div class="es-icon">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v4a1 1 0 0 0 1 1h4"/><path d="M17 21H7a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7l5 5v11a2 2 0 0 1-2 2z"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>
     </div>
-    <div>暂无更多已完成项 · 历史记录保留 30 天</div>
+    <div>{t('completed.empty')}</div>
   </div>
 </main>
 

@@ -1,11 +1,16 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import NoteView from './lib/noteView.svelte';
   import CompletedView from './lib/completedView.svelte';
   import SettingsView from './lib/settingsView.svelte';
   import TrayMenuView from './lib/trayMenuView.svelte';
+  import { initLocale } from './lib/i18n.svelte';
 
   let hash = $state(window.location.hash);
   window.addEventListener('hashchange', () => (hash = window.location.hash));
+  onMount(() => {
+    initLocale();
+  });
 
   const route = $derived(parse(hash));
   function parse(h: string): { name: string; id?: string } {

@@ -1,3 +1,4 @@
+use crate::commands;
 use crate::db::{Note, NoteRepository};
 use crate::state::AppState;
 use tauri::{AppHandle, Manager, WebviewUrl, WebviewWindowBuilder};
@@ -127,20 +128,22 @@ pub fn resize_note(app: &AppHandle, id: &str, w: f64, h: f64) -> tauri::Result<(
 }
 
 /// Open one of the auxiliary single-instance windows (completed / settings).
+/// 标题按当前语言(commands::lang)。
 pub fn open_aux(app: &AppHandle, route: &str) -> tauri::Result<()> {
     if app.get_webview_window(route).is_some() {
         return Ok(());
     }
+    let zh = commands::lang(&app.state::<AppState>().db) == "zh";
+    let title = match route {
+        "completed" => if zh { "已完成" } else { "Completed" },
+        _ => if zh { "设置" } else { "Settings" },
+    };
     WebviewWindowBuilder::new(
         app,
         route,
         WebviewUrl::App(format!("index.html#/{route}").into()),
     )
-    .title(if route == "completed" {
-        "已完成"
-    } else {
-        "设置"
-    })
+    .title(title)
     .inner_size(420.0, 520.0)
     .resizable(true)
     .build()?;

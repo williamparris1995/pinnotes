@@ -1,6 +1,7 @@
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import NoteView from './noteView.svelte';
+import { setLocale } from './i18n.svelte';
 
 vi.mock('./tauri', () => ({
   invoke: vi.fn(),
@@ -18,7 +19,10 @@ const NOTE = {
 const callsOf = (invoke: any): string[] => invoke.mock.calls.map((c: any) => c[0]);
 
 describe('NoteView', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    setLocale('zh');
+    vi.clearAllMocks();
+  });
   afterEach(() => vi.useRealTimers());
 
   it('renders note, hides on click; 完成 defers complete_note and 撤销 cancels', async () => {

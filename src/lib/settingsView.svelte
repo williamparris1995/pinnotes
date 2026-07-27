@@ -1,10 +1,11 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { invoke } from './tauri';
+  import { t, i18n, setLocalePersist } from './i18n.svelte';
 
   // Prototype pinnotes-8c76 · Section 03 SettingsWindow: a snooze segmented
-  // control (1/2/5/10/30 分钟) and an 开机自启 toggle. Dynamic behavior is
-  // unchanged: load on mount, persist on change.
+  // control (1/2/5/10/30 分钟), an 开机自启 toggle, and a 语言 switch.
+  // Dynamic behavior is unchanged: load on mount, persist on change.
   const opts = [1, 2, 5, 10, 30, 60];
   let snooze = $state(2);
   let auto = $state(true);
@@ -37,8 +38,8 @@
 <main>
   <div class="set-row">
     <div>
-      <div class="set-label">默认隐藏时长</div>
-      <div class="set-hint">点「隐藏」后便签暂时收起的时间 · 到点未完成自动弹回原位</div>
+      <div class="set-label">{t('settings.snoozeLabel')}</div>
+      <div class="set-hint">{t('settings.snoozeHint')}</div>
     </div>
     <div class="set-controls">
       <div class="seg">
@@ -46,24 +47,36 @@
           <button type="button" class="seg-opt" class:active={snooze === m} onclick={() => setSnooze(m)}>{m}</button>
         {/each}
       </div>
-      <span class="seg-suffix">分钟</span>
+      <span class="seg-suffix">{t('settings.minutesSuffix')}</span>
     </div>
   </div>
   <div class="set-row">
     <div>
-      <div class="set-label">开机自启</div>
-      <div class="set-hint">Windows 登录后自动启动并驻留系统托盘</div>
+      <div class="set-label">{t('settings.autostartLabel')}</div>
+      <div class="set-hint">{t('settings.autostartHint')}</div>
     </div>
     <div
       class="toggle"
       class:off={!auto}
       role="switch"
       aria-checked={auto}
-      aria-label="开机自启"
+      aria-label={t('settings.autostartLabel')}
       tabindex="0"
       onclick={() => setAuto(!auto)}
       onkeydown={onToggleKey}
     ></div>
+  </div>
+  <div class="set-row">
+    <div>
+      <div class="set-label">{t('settings.languageLabel')}</div>
+      <div class="set-hint">{t('settings.languageHint')}</div>
+    </div>
+    <div class="set-controls">
+      <div class="seg lang-seg">
+        <button type="button" class="seg-opt" class:active={i18n.locale === 'zh'} onclick={() => setLocalePersist('zh')}>中文</button>
+        <button type="button" class="seg-opt" class:active={i18n.locale === 'en'} onclick={() => setLocalePersist('en')}>English</button>
+      </div>
+    </div>
   </div>
 </main>
 
@@ -125,6 +138,7 @@
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.03);
     font-weight: 600;
   }
+  .lang-seg .seg-opt { min-width: auto; }
   .seg-suffix { font-size: 11px; color: var(--ink-3); margin-left: 8px; }
 
   .toggle {

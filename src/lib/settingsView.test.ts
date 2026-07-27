@@ -1,11 +1,15 @@
 import { render, screen, fireEvent } from '@testing-library/svelte';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import SettingsView from './settingsView.svelte';
+import { setLocale } from './i18n.svelte';
 
 vi.mock('./tauri', () => ({ invoke: vi.fn(), listen: vi.fn() }));
 
 describe('SettingsView', () => {
-  beforeEach(() => vi.clearAllMocks());
+  beforeEach(() => {
+    setLocale('zh');
+    vi.clearAllMocks();
+  });
   it('loads settings on mount and fires set_settings / set_autostart', async () => {
     const { invoke } = await import('./tauri');
     (invoke as any).mockImplementation((cmd: string) =>

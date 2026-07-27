@@ -59,13 +59,16 @@ pub(crate) fn new_note(app: &AppHandle, state: &AppState) -> Result<Note, String
 /// screen), then mark the flag. Returns `Some(note)` on the first run (caller
 /// opens its window) and `None` on every later run. Pure DB logic — testable
 /// without Tauri.
+const WELCOME_ZH: &str = "欢迎使用 PinNotes！\n\n这是一条置顶便签。\n右键托盘图标（屏幕右下角，可能在 ^ 隐藏区里）可：新建便签 / 显示全部 / 已完成 / 设置 / 退出。\n\n点「隐藏」会短暂收起、到点自动弹回；点「✓ 完成」才会让它消失。";
+const WELCOME_EN: &str = "Welcome to PinNotes!\n\nThis is a pinned sticky note.\nRight-click the tray icon (bottom-right of the screen, maybe in the ^ hidden area) to: New note / Show all / Completed / Settings / Quit.\n\nClick Hide to snooze it (it pops back in place when due); click ✓ Done to remove it.";
+
 pub(crate) fn maybe_welcome_note(db: &Db) -> Result<Option<Note>, String> {
     if get_setting(db, "first_run_done")?.is_some() {
         return Ok(None);
     }
     let note = Note {
         id: Uuid::new_v4().to_string(),
-        content: "欢迎使用 PinNotes！\n\n这是一条置顶便签。\n右键托盘图标（屏幕右下角，可能在 ^ 隐藏区里）可：新建便签 / 显示全部 / 已完成 / 设置 / 退出。\n\n点「隐藏」会短暂收起、到点自动弹回；点「✓ 完成」才会让它消失。".into(),
+        content: (if lang(db) == "zh" { WELCOME_ZH } else { WELCOME_EN }).into(),
         color: "yellow".into(),
         x: 160.0,
         y: 80.0,
@@ -422,6 +425,18 @@ pub(crate) fn set_setting(db: &Db, key: &str, val: &str) -> Result<(), String> {
     )
     .map_err(|e| e.to_string())?;
     Ok(())
+}
+
+/// 当前语言("en"/"zh"):读 settings.language;缺省按 first_run_done 判定
+/// (老用户→zh,新用户→en)。供欢迎便签 + aux 窗口标题用。
+pub(crate) fn lang(db: &Db) -> String {
+    if let Ok(Some(l)) = get_setting(db, "language") {
+        if l == "en" || l == "zh" {
+            return l;
+        }
+    }
+    let first_run = matches!(get_setting(db, "first_run_done"), Ok(Some(ref v)) if v == "1");
+    if first_run { "zh" } else { "en" }.to_string()
 }
 
 #[tauri::command]
