@@ -6,6 +6,8 @@
 
 跨平台（Windows / macOS / Linux），基于 **Tauri 2（Rust）+ Svelte 5**。
 
+<!-- 截图占位：待补 docs/screenshot.png -->
+
 ## 功能
 
 - **置顶便签**：多条独立窗口，置顶显示；抓顶部 grip 拖动到任意位置并记住，重启仍在。
@@ -17,6 +19,8 @@
 - **系统托盘**：新建便签 / 显示全部 / 隐藏全部 / 已完成 / 设置 / 退出。
 - **已完成列表**：重新激活（便签弹回）/ 删除。
 - **开机自启**（默认开，可在设置关闭）。
+- **中英文切换**：设置页一键切换中文 / English（默认英文，老用户保留中文）。
+- **自动更新**：启动后台检查新版本，下载 + 校验签名 + 安装 + 重启，无需服务器。
 - **SQLite 本地持久化**，所有便签、位置、状态都存本地。
 
 ## 下载
@@ -61,13 +65,19 @@ docs/superpowers/specs/   设计文档
 docs/superpowers/plans/   实现计划
 ```
 
+## 自动更新
+
+启动时后台检查 [Releases](https://github.com/williamparris1995/pinnotes/releases) 的新版本，有更新会在托盘菜单顶部提示；点击即**下载 → 校验签名 → 安装 → 重启**，全程无需服务器（经 Tauri updater 直连 GitHub Release）。也可在托盘菜单「检查更新」手动触发。详见 [ADR-0002](docs/adr/0002-auto-update-via-tauri-updater-and-github.md)。
+
+> macOS 未购买 Apple 开发者证书，首次运行需在 Gatekeeper「右键 → 打开」放行一次。
+
 ## 发布
 
 打 tag 即触发 GitHub Actions 在 Windows/macOS/Linux 三平台构建并发布到 Release：
 
 ```bash
-git tag v0.1.0
-git push origin v0.1.0
+git tag v0.5.1          # 示例：替换为要发布的版本号
+git push origin v0.5.1
 ```
 
 ## 许可证

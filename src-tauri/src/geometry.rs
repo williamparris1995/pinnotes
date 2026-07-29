@@ -60,4 +60,24 @@ mod tests {
         let w = Rect { left: 1880.0, top: 100.0, width: 240.0, height: 170.0 };
         assert!(clamp_into_work_area(w, &[m1, m2], 8.0).left >= 1920.0);
     }
+
+    #[test]
+    fn empty_monitors_returns_unchanged() {
+        let w = Rect { left: -500.0, top: -500.0, width: 240.0, height: 170.0 };
+        assert_eq!(clamp_into_work_area(w, &[], 8.0), w);
+    }
+
+    #[test]
+    fn off_top_pulled_in() {
+        let w = Rect { left: 100.0, top: -300.0, width: 240.0, height: 170.0 };
+        assert_eq!(clamp_into_work_area(w, &[mon()], 8.0).top, 8.0);
+    }
+
+    #[test]
+    fn window_larger_than_workarea_clamped_to_margin() {
+        // 窗口比显示器还大 → upper < lower → 贴 margin
+        let w = Rect { left: 100.0, top: 100.0, width: 5000.0, height: 5000.0 };
+        let c = clamp_into_work_area(w, &[mon()], 8.0);
+        assert_eq!((c.left, c.top), (8.0, 8.0));
+    }
 }

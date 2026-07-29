@@ -33,4 +33,21 @@ describe('SettingsView', () => {
     expect(setAutostartCall).toBeTruthy();
     expect(setAutostartCall[1]).toEqual({ enabled: false });
   });
+
+  it('persists language choice via set_settings', async () => {
+    const { invoke } = await import('./tauri');
+    (invoke as any).mockImplementation((cmd: string) =>
+      cmd === 'get_autostart'
+        ? Promise.resolve(true)
+        : Promise.resolve({ default_snooze_minutes: '2' }),
+    );
+    render(SettingsView);
+    await screen.findByText('5'); // 等 onMount hydrate
+    await fireEvent.click(screen.getByText('English'));
+    const langCall = (invoke as any).mock.calls.find(
+      (c: any) => c[0] === 'set_settings' && c[1]?.key === 'language',
+    );
+    expect(langCall).toBeTruthy();
+    expect(langCall[1]).toEqual({ key: 'language', value: 'en' });
+  });
 });

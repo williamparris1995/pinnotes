@@ -2,6 +2,6 @@
   --accent: #4a6fa5;
   --radius: 12px;
   --font: "Segoe UI", system-ui, sans-serif;
-  --c-yellow: #fff59d; --c-pink: #ffcdd2; --c-blue: #bbdefb; --c-green: #c8e6c9;
+  --c-yellow: #ffe678; --c-pink: #ffc0c8; --c-blue: #a0cdff; --c-green: #aae6a8;
 }
 html, body, #app { margin: 0; height: 100%; font-family: var(--font); background: transparent; }

@@ -53,103 +53,104 @@ fn row_to_note(row: &rusqlite::Row) -> rusqlite::Result<Note> {
     })
 }
 
+/// 统一错误转换:任何 ToString 错误 → String(前端契约)。供 commands/autostart 复用。
+pub(crate) fn to_str<E: ToString>(e: E) -> String {
+    e.to_string()
+}
+
+/// 取锁 → 在 Connection 上执行 rusqlite 闭包 → 统一转 String。
+/// 收敛每个 repository 方法的「取锁 map_err + execute map_err」三步样板。
+fn run<F, R>(db: &Db, f: F) -> Result<R, String>
+where
+    F: FnOnce(&Connection) -> rusqlite::Result<R>,
+{
+    let conn = db.lock().map_err(to_str)?;
+    f(&conn).map_err(to_str)
+}
+
+/// execute 专用:丢弃受影响行数(usize)→()。INSERT/UPDATE/DELETE 用它。
+fn run_exec<F>(db: &Db, f: F) -> Result<(), String>
+where
+    F: FnOnce(&Connection) -> rusqlite::Result<usize>,
+{
+    run(db, |c| f(c).map(|_| ()))
+}
+
+/// 显式列名(顺序对齐 row_to_note 的 0–11),替代脆弱的 SELECT *。
+const NOTES_COLS: &str = "id, content, color, x, y, w, h, snooze_minutes, created_at, completed_at, is_hidden, hidden_until";
+
 pub struct NoteRepository;
 
 impl NoteRepository {
     pub fn active(db: &Db) -> Result<Vec<Note>, String> {
-        let lock = db.lock().map_err(|e| e.to_string())?;
-        let mut stmt = lock
-            .prepare("SELECT * FROM notes WHERE completed_at IS NULL ORDER BY created_at")
-            .map_err(|e| e.to_string())?;
-        let rows = stmt.query_map([], row_to_note).map_err(|e| e.to_string())?;
-        rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+        run(db, |c| {
+            let mut stmt = c.prepare(&format!("SELECT {NOTES_COLS} FROM notes WHERE completed_at IS NULL ORDER BY created_at"))?;
+            let rows = stmt.query_map([], row_to_note)?;
+            rows.collect::<Result<Vec<_>, _>>()
+        })
     }
 
     pub fn completed(db: &Db) -> Result<Vec<Note>, String> {
-        let lock = db.lock().map_err(|e| e.to_string())?;
-        let mut stmt = lock
-            .prepare("SELECT * FROM notes WHERE completed_at IS NOT NULL ORDER BY completed_at DESC")
-            .map_err(|e| e.to_string())?;
-        let rows = stmt.query_map([], row_to_note).map_err(|e| e.to_string())?;
-        rows.collect::<Result<Vec<_>, _>>().map_err(|e| e.to_string())
+        run(db, |c| {
+            let mut stmt = c.prepare(&format!("SELECT {NOTES_COLS} FROM notes WHERE completed_at IS NOT NULL ORDER BY completed_at DESC"))?;
+            let rows = stmt.query_map([], row_to_note)?;
+            rows.collect::<Result<Vec<_>, _>>()
+        })
     }
 
     pub fn get(db: &Db, id: &str) -> Result<Option<Note>, String> {
-        let lock = db.lock().map_err(|e| e.to_string())?;
-        lock.query_row("SELECT * FROM notes WHERE id = ?1", params![id], row_to_note)
-            .optional()
-            .map_err(|e| e.to_string())
+        run(db, |c| {
+            c.query_row(&format!("SELECT {NOTES_COLS} FROM notes WHERE id = ?1"), params![id], row_to_note).optional()
+        })
     }
 
     pub fn create(db: &Db, n: &Note) -> Result<(), String> {
-        let lock = db.lock().map_err(|e| e.to_string())?;
-        lock.execute(
+        run_exec(db, |c| c.execute(
             "INSERT INTO notes (id, content, color, x, y, w, h, snooze_minutes, created_at, completed_at, is_hidden, hidden_until)
              VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
             params![n.id, n.content, n.color, n.x, n.y, n.w, n.h, n.snooze_minutes,
                     n.created_at, n.completed_at, n.is_hidden as i64, n.hidden_until],
-        ).map_err(|e| e.to_string())?;
-        Ok(())
+        ))
     }
 
     pub fn update_position(db: &Db, id: &str, x: f64, y: f64) -> Result<(), String> {
-        let lock = db.lock().map_err(|e| e.to_string())?;
-        lock.execute("UPDATE notes SET x=?1, y=?2 WHERE id=?3", params![x, y, id]).map_err(|e| e.to_string())?;
-        Ok(())
+        run_exec(db, |c| c.execute("UPDATE notes SET x=?1, y=?2 WHERE id=?3", params![x, y, id]))
     }
 
     pub fn update_content(db: &Db, id: &str, content: &str) -> Result<(), String> {
-        let lock = db.lock().map_err(|e| e.to_string())?;
-        lock.execute("UPDATE notes SET content=?1 WHERE id=?2", params![content, id]).map_err(|e| e.to_string())?;
-        Ok(())
+        run_exec(db, |c| c.execute("UPDATE notes SET content=?1 WHERE id=?2", params![content, id]))
     }
 
     pub fn update_color(db: &Db, id: &str, color: &str) -> Result<(), String> {
-        let lock = db.lock().map_err(|e| e.to_string())?;
-        lock.execute("UPDATE notes SET color=?1 WHERE id=?2", params![color, id]).map_err(|e| e.to_string())?;
-        Ok(())
+        run_exec(db, |c| c.execute("UPDATE notes SET color=?1 WHERE id=?2", params![color, id]))
     }
 
     pub fn update_size(db: &Db, id: &str, w: f64, h: f64) -> Result<(), String> {
-        let lock = db.lock().map_err(|e| e.to_string())?;
-        lock.execute("UPDATE notes SET w=?1, h=?2 WHERE id=?3", params![w, h, id]).map_err(|e| e.to_string())?;
-        Ok(())
+        run_exec(db, |c| c.execute("UPDATE notes SET w=?1, h=?2 WHERE id=?3", params![w, h, id]))
     }
 
     pub fn update_snooze_minutes(db: &Db, id: &str, mins: i64) -> Result<(), String> {
-        let lock = db.lock().map_err(|e| e.to_string())?;
-        lock.execute("UPDATE notes SET snooze_minutes=?1 WHERE id=?2", params![mins, id]).map_err(|e| e.to_string())?;
-        Ok(())
+        run_exec(db, |c| c.execute("UPDATE notes SET snooze_minutes=?1 WHERE id=?2", params![mins, id]))
     }
 
     pub fn snooze(db: &Db, id: &str, until_iso: &str) -> Result<(), String> {
-        let lock = db.lock().map_err(|e| e.to_string())?;
-        lock.execute("UPDATE notes SET is_hidden=1, hidden_until=?1 WHERE id=?2", params![until_iso, id]).map_err(|e| e.to_string())?;
-        Ok(())
+        run_exec(db, |c| c.execute("UPDATE notes SET is_hidden=1, hidden_until=?1 WHERE id=?2", params![until_iso, id]))
     }
 
     pub fn clear_snooze(db: &Db, id: &str) -> Result<(), String> {
-        let lock = db.lock().map_err(|e| e.to_string())?;
-        lock.execute("UPDATE notes SET is_hidden=0, hidden_until=NULL WHERE id=?1", params![id]).map_err(|e| e.to_string())?;
-        Ok(())
+        run_exec(db, |c| c.execute("UPDATE notes SET is_hidden=0, hidden_until=NULL WHERE id=?1", params![id]))
     }
 
     pub fn complete(db: &Db, id: &str, at_iso: &str) -> Result<(), String> {
-        let lock = db.lock().map_err(|e| e.to_string())?;
-        lock.execute("UPDATE notes SET completed_at=?1, is_hidden=0, hidden_until=NULL WHERE id=?2", params![at_iso, id]).map_err(|e| e.to_string())?;
-        Ok(())
+        run_exec(db, |c| c.execute("UPDATE notes SET completed_at=?1, is_hidden=0, hidden_until=NULL WHERE id=?2", params![at_iso, id]))
     }
 
     pub fn reactivate(db: &Db, id: &str) -> Result<(), String> {
-        let lock = db.lock().map_err(|e| e.to_string())?;
-        lock.execute("UPDATE notes SET completed_at=NULL, is_hidden=0, hidden_until=NULL WHERE id=?1", params![id]).map_err(|e| e.to_string())?;
-        Ok(())
+        run_exec(db, |c| c.execute("UPDATE notes SET completed_at=NULL, is_hidden=0, hidden_until=NULL WHERE id=?1", params![id]))
     }
 
     pub fn delete(db: &Db, id: &str) -> Result<(), String> {
-        let lock = db.lock().map_err(|e| e.to_string())?;
-        lock.execute("DELETE FROM notes WHERE id=?1", params![id]).map_err(|e| e.to_string())?;
-        Ok(())
+        run_exec(db, |c| c.execute("DELETE FROM notes WHERE id=?1", params![id]))
     }
 }
 
@@ -220,5 +221,45 @@ mod tests {
         assert_eq!(NoteRepository::get(&db, "a").unwrap().unwrap().snooze_minutes, 2);
         NoteRepository::update_snooze_minutes(&db, "a", 10).unwrap();
         assert_eq!(NoteRepository::get(&db, "a").unwrap().unwrap().snooze_minutes, 10);
+    }
+
+    #[test]
+    fn row_roundtrip_preserves_all_fields() {
+        let db = mem();
+        let original = Note {
+            id: "x".into(), content: "内容".into(), color: "blue".into(),
+            x: 12.5, y: 34.5, w: 360.0, h: 260.0, snooze_minutes: 10,
+            created_at: "2026-07-22T10:00:00Z".into(),
+            completed_at: Some("2026-07-22T11:00:00Z".into()),
+            is_hidden: true, // i64↔bool 转换点 (CLAUDE.md 强调)
+            hidden_until: Some("2026-07-22T10:05:00Z".into()),
+        };
+        NoteRepository::create(&db, &original).unwrap();
+        assert_eq!(NoteRepository::get(&db, "x").unwrap().unwrap(), original);
+    }
+
+    #[test]
+    fn update_position_and_content_roundtrip() {
+        let db = mem();
+        NoteRepository::create(&db, &sample("a")).unwrap();
+        NoteRepository::update_position(&db, "a", 200.0, 300.0).unwrap();
+        let n = NoteRepository::get(&db, "a").unwrap().unwrap();
+        assert_eq!((n.x, n.y), (200.0, 300.0));
+        NoteRepository::update_content(&db, "a", "新文本").unwrap();
+        assert_eq!(NoteRepository::get(&db, "a").unwrap().unwrap().content, "新文本");
+    }
+
+    #[test]
+    fn delete_removes_row() {
+        let db = mem();
+        NoteRepository::create(&db, &sample("a")).unwrap();
+        NoteRepository::delete(&db, "a").unwrap();
+        assert!(NoteRepository::get(&db, "a").unwrap().is_none());
+    }
+
+    #[test]
+    fn get_missing_returns_none() {
+        let db = mem();
+        assert!(NoteRepository::get(&db, "nope").unwrap().is_none());
     }
 }

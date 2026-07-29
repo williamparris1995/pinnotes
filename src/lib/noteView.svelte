@@ -200,10 +200,10 @@
   }
   .note-error { display: block; padding: 16px; background: #eee; color: #b00; }
 
-  .note-yellow { background: #ffe678; }
-  .note-pink   { background: #ffc0c8; }
-  .note-blue   { background: #a0cdff; }
-  .note-green  { background: #aae6a8; }
+  .note-yellow { background: var(--c-yellow); }
+  .note-pink   { background: var(--c-pink); }
+  .note-blue   { background: var(--c-blue); }
+  .note-green  { background: var(--c-green); }
 
   .note-grip {
     flex: 0 0 auto;
@@ -239,10 +239,10 @@
     border: 1px solid rgba(0, 0, 0, 0.18);
     cursor: pointer;
   }
-  .color-dot-yellow { background: #ffe678; }
-  .color-dot-pink   { background: #ffc0c8; }
-  .color-dot-blue   { background: #a0cdff; }
-  .color-dot-green  { background: #aae6a8; }
+  .color-dot-yellow { background: var(--c-yellow); }
+  .color-dot-pink   { background: var(--c-pink); }
+  .color-dot-blue   { background: var(--c-blue); }
+  .color-dot-green  { background: var(--c-green); }
   .color-dot:hover { transform: scale(1.12); }
   .color-dot.active { box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.92); }
   .size-btn {

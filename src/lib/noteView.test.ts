@@ -58,4 +58,40 @@ describe('NoteView', () => {
     await vi.advanceTimersByTimeAsync(5000);
     expect(callsOf(invoke as any)).toContain('complete_note');
   });
+
+  it('persists edited content via edit_note on focusout', async () => {
+    const { invoke } = await import('./tauri');
+    (invoke as any).mockResolvedValue({ ...NOTE });
+    render(NoteView, { props: { id: 'n1' } });
+    const ta = await screen.findByDisplayValue('提交季度报告');
+    await fireEvent.input(ta, { target: { value: '已修改内容' } });
+    await fireEvent.focusOut(ta);
+    expect(callsOf(invoke as any)).toContain('edit_note');
+  });
+
+  it('changes color via set_color when a different color dot is clicked', async () => {
+    const { invoke } = await import('./tauri');
+    (invoke as any).mockResolvedValue({ ...NOTE }); // color = yellow
+    render(NoteView, { props: { id: 'n1' } });
+    await screen.findByDisplayValue('提交季度报告');
+    await fireEvent.click(screen.getByLabelText('颜色：粉'));
+    expect(callsOf(invoke as any)).toContain('set_color');
+  });
+
+  it('cycles snooze minutes via set_snooze', async () => {
+    const { invoke } = await import('./tauri');
+    (invoke as any).mockResolvedValue({ ...NOTE }); // snooze_minutes = 2
+    render(NoteView, { props: { id: 'n1' } });
+    const btn = await screen.findByText('2分');
+    await fireEvent.click(btn);
+    expect(callsOf(invoke as any)).toContain('set_snooze');
+    expect(await screen.findByText('5分')).toBeTruthy();
+  });
+
+  it('shows loadError when get_note rejects', async () => {
+    const { invoke } = await import('./tauri');
+    (invoke as any).mockRejectedValue(new Error('no note'));
+    render(NoteView, { props: { id: 'missing' } });
+    expect(await screen.findByText('无法加载便签')).toBeTruthy();
+  });
 });

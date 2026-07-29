@@ -97,10 +97,10 @@
      :global to avoid unused-selector warnings while keeping the prototype's
      exact class names. Each aux window renders only this component, so the
      global leak is contained. */
-  :global(.swatch-yellow) { background: #ffe078; }
-  :global(.swatch-pink) { background: #ffc0c8; }
-  :global(.swatch-blue) { background: #a0cdff; }
-  :global(.swatch-green) { background: #aae6a8; }
+  :global(.swatch-yellow) { background: var(--c-yellow); }
+  :global(.swatch-pink) { background: var(--c-pink); }
+  :global(.swatch-blue) { background: var(--c-blue); }
+  :global(.swatch-green) { background: var(--c-green); }
   .done-text {
     flex: 1;
     font-size: 13px;

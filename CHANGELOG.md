@@ -2,6 +2,14 @@
 
 PinNotes 各版本变更。安装包与自动更新清单(`latest.json`)发布在 [GitHub Releases](https://github.com/williamparris1995/pinnotes/releases)。
 
+## 0.5.1
+
+- **质量基建**:无用户可见行为变化,加固测试覆盖与代码质量。
+- **根 README**:补全 i18n 中英文 + 自动更新(OTA)两节(此前漏提)。
+- **测试覆盖**:前端 Vitest 5→20 用例(新增 i18n.svelte.ts 全测 + 3 视图边界交互);Rust cargo 测试 14→27(db row_to_note 往返保真、snooze/geometry 边界、commands `lang` 分支)。
+- **重构(行为不变)**:db 错误转换样板收敛(`run`/`run_exec`/`to_str`)+ `SELECT *` 改显式列名;4 色统一到 `theme.css` `var()`(顺带修黄色在便签窗与已完成列表不一致的视觉 bug)。
+- **CI/工具链**:新增 PR/测试 CI(.github/workflows/ci.yml)+ pre-commit hook。
+
 ## 0.5.0
 
 - **国际化(i18n)**:中英文切换。**默认英文**;老用户升级保留中文。语言选择器在设置页。

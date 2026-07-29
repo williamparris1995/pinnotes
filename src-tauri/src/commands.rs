@@ -3,7 +3,7 @@
 // same logic without going through the command dispatch convention.
 use crate::{
     autostart,
-    db::{Db, Note, NoteRepository},
+    db::{to_str, Db, Note, NoteRepository},
     geometry::{clamp_into_work_area, Rect},
     state::AppState,
     window_manager,
@@ -40,7 +40,7 @@ pub fn create_note_impl(app: &AppHandle, state: &AppState) -> Result<Note, Strin
         hidden_until: None,
     };
     NoteRepository::create(&state.db, &n)?;
-    window_manager::open_note(app, &n).map_err(|e| e.to_string())?;
+    window_manager::open_note(app, &n).map_err(to_str)?;
     Ok(n)
 }
 
@@ -99,7 +99,7 @@ pub fn hide_note(id: String, app: AppHandle, state: State<AppState>) -> Result<(
     };
     let until = Utc::now() + chrono::Duration::minutes(mins);
     NoteRepository::snooze(&state.db, &id, &until.to_rfc3339())?;
-    window_manager::hide_note(&app, &id).map_err(|e| e.to_string())?;
+    window_manager::hide_note(&app, &id).map_err(to_str)?;
     let app2 = app.clone();
     state
         .scheduler
@@ -117,7 +117,7 @@ pub(crate) fn repop_note(app: &AppHandle, id: &str) -> Result<(), String> {
     if let Some(n) = NoteRepository::get(&state.db, id)? {
         if n.completed_at.is_none() {
             NoteRepository::clear_snooze(&state.db, id)?;
-            window_manager::show_note_no_focus(app, id).map_err(|e| e.to_string())?;
+            window_manager::show_note_no_focus(app, id).map_err(to_str)?;
         }
     }
     Ok(())
@@ -127,7 +127,7 @@ pub(crate) fn repop_note(app: &AppHandle, id: &str) -> Result<(), String> {
 pub fn complete_note(id: String, app: AppHandle, state: State<AppState>) -> Result<(), String> {
     NoteRepository::complete(&state.db, &id, &now_iso())?;
     state.scheduler.cancel(&id);
-    window_manager::close_note(&app, &id).map_err(|e| e.to_string())?;
+    window_manager::close_note(&app, &id).map_err(to_str)?;
     Ok(())
 }
 
@@ -161,7 +161,7 @@ pub fn move_note(
         .unwrap_or((240.0, 170.0));
     let clamped = clamp_note(&app, x, y, w, h);
     NoteRepository::update_position(&state.db, &id, clamped.0, clamped.1)?;
-    window_manager::move_note(&app, &id, clamped.0, clamped.1).map_err(|e| e.to_string())?;
+    window_manager::move_note(&app, &id, clamped.0, clamped.1).map_err(to_str)?;
     Ok(())
 }
 
@@ -174,7 +174,7 @@ pub fn set_size(
     state: State<AppState>,
 ) -> Result<(), String> {
     NoteRepository::update_size(&state.db, &id, w, h)?;
-    window_manager::resize_note(&app, &id, w, h).map_err(|e| e.to_string())?;
+    window_manager::resize_note(&app, &id, w, h).map_err(to_str)?;
     Ok(())
 }
 
@@ -186,7 +186,7 @@ pub async fn reactivate(id: String, app: AppHandle, state: State<'_, AppState>) 
         // WebviewWindowBuilder::build(). A sync command would run on the main
         // thread inside the IPC handler and deadlock build (it needs the
         // message loop); from the runtime it marshals onto a free main thread.
-        window_manager::open_note(&app, &n).map_err(|e| e.to_string())?;
+        window_manager::open_note(&app, &n).map_err(to_str)?;
     }
     Ok(())
 }
@@ -209,7 +209,7 @@ pub fn copy_note(id: String, app: AppHandle, state: State<AppState>) -> Result<N
         hidden_until: None,
     };
     NoteRepository::create(&state.db, &n)?;
-    window_manager::open_note(&app, &n).map_err(|e| e.to_string())?;
+    window_manager::open_note(&app, &n).map_err(to_str)?;
     Ok(n)
 }
 
@@ -243,8 +243,8 @@ pub async fn tray_menu_action(
         }
         "showAll" => show_all_impl(&app, &state)?,
         "hideAll" => hide_all_impl(&app, &state)?,
-        "completed" => window_manager::open_aux(&app, "completed").map_err(|e| e.to_string())?,
-        "settings" => window_manager::open_aux(&app, "settings").map_err(|e| e.to_string())?,
+        "completed" => window_manager::open_aux(&app, "completed").map_err(to_str)?,
+        "settings" => window_manager::open_aux(&app, "settings").map_err(to_str)?,
         "quit" => app.exit(0),
         _ => {}
     }
@@ -260,10 +260,10 @@ pub async fn tray_menu_action(
 pub(crate) async fn fetch_update_version(app: &AppHandle) -> Result<Option<String>, String> {
     match app
         .updater()
-        .map_err(|e| e.to_string())?
+        .map_err(to_str)?
         .check()
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(to_str)?
     {
         Some(u) => Ok(Some(u.version)),
         None => Ok(None),
@@ -299,10 +299,10 @@ pub async fn apply_update(app: AppHandle, state: State<'_, AppState>) -> Result<
 
     let update = app
         .updater()
-        .map_err(|e| e.to_string())?
+        .map_err(to_str)?
         .check()
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(to_str)?
         .ok_or("no update available")?;
 
     let app_cb = app.clone();
@@ -365,7 +365,7 @@ pub fn show_all_impl(app: &AppHandle, state: &AppState) -> Result<(), String> {
         state.scheduler.cancel(&n.id);
         // 用 open_note 而非 show_note:隐藏便签可能根本没有窗口(启动加载会跳过
         // 未到期的隐藏便签开窗)。open_note 对无窗的会新建、对已存在隐藏窗的会重显。
-        window_manager::open_note(app, &n).map_err(|e| e.to_string())?;
+        window_manager::open_note(app, &n).map_err(to_str)?;
     }
     Ok(())
 }
@@ -380,7 +380,7 @@ pub fn show_all(app: AppHandle, state: State<AppState>) -> Result<(), String> {
 /// 显示全部 or a per-note re-pop). Symmetric counterpart to show_all.
 pub fn hide_all_impl(app: &AppHandle, state: &AppState) -> Result<(), String> {
     for n in NoteRepository::active(&state.db)? {
-        window_manager::hide_note(app, &n.id).map_err(|e| e.to_string())?;
+        window_manager::hide_note(app, &n.id).map_err(to_str)?;
     }
     Ok(())
 }
@@ -406,24 +406,24 @@ pub fn set_settings(key: String, value: String, state: State<AppState>) -> Resul
 /// `lib::setup` for the autostart first-run guard.
 pub(crate) fn get_setting(db: &Db, key: &str) -> Result<Option<String>, String> {
     use rusqlite::OptionalExtension;
-    let lock = db.lock().map_err(|e| e.to_string())?;
+    let lock = db.lock().map_err(to_str)?;
     lock.query_row(
         "SELECT val FROM settings WHERE key=?1",
         rusqlite::params![key],
         |r| r.get::<_, String>(0),
     )
     .optional()
-    .map_err(|e| e.to_string())
+    .map_err(to_str)
 }
 
 /// Upsert a single setting value (INSERT … ON CONFLICT UPDATE).
 pub(crate) fn set_setting(db: &Db, key: &str, val: &str) -> Result<(), String> {
-    let lock = db.lock().map_err(|e| e.to_string())?;
+    let lock = db.lock().map_err(to_str)?;
     lock.execute(
         "INSERT INTO settings(key,val) VALUES(?1,?2) ON CONFLICT(key) DO UPDATE SET val=excluded.val",
         rusqlite::params![key, val],
     )
-    .map_err(|e| e.to_string())?;
+    .map_err(to_str)?;
     Ok(())
 }
 
@@ -457,16 +457,16 @@ fn default_snooze(state: &AppState) -> Result<u64, String> {
 }
 
 fn settings_map(state: &AppState) -> Result<std::collections::HashMap<String, String>, String> {
-    let lock = state.db.lock().map_err(|e| e.to_string())?;
+    let lock = state.db.lock().map_err(to_str)?;
     let mut stmt = lock
         .prepare("SELECT key, val FROM settings")
-        .map_err(|e| e.to_string())?;
+        .map_err(to_str)?;
     let rows = stmt
         .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
-        .map_err(|e| e.to_string())?;
+        .map_err(to_str)?;
     let mut m = std::collections::HashMap::new();
     for r in rows {
-        let row = r.map_err(|e| e.to_string())?;
+        let row = r.map_err(to_str)?;
         m.insert(row.0, row.1);
     }
     Ok(m)
@@ -534,5 +534,39 @@ mod tests {
         // Flag now set -> second call is a no-op (None, no extra note).
         assert!(maybe_welcome_note(&db).unwrap().is_none());
         assert_eq!(NoteRepository::active(&db).unwrap().len(), 1);
+    }
+
+    #[test]
+    fn lang_uses_explicit_setting_when_valid() {
+        let db = mem();
+        set_setting(&db, "language", "en").unwrap();
+        assert_eq!(lang(&db), "en");
+        set_setting(&db, "language", "zh").unwrap();
+        assert_eq!(lang(&db), "zh");
+    }
+
+    #[test]
+    fn lang_defaults_to_zh_for_existing_users() {
+        let db = mem();
+        set_setting(&db, "first_run_done", "1").unwrap();
+        // language 未设 → 老用户 zh
+        assert_eq!(lang(&db), "zh");
+    }
+
+    #[test]
+    fn lang_defaults_to_en_for_new_users() {
+        let db = mem();
+        // 无 language,无 first_run_done → 新用户 en
+        assert_eq!(lang(&db), "en");
+    }
+
+    #[test]
+    fn settings_roundtrip_and_upsert() {
+        let db = mem();
+        assert_eq!(get_setting(&db, "k").unwrap(), None);
+        set_setting(&db, "k", "v1").unwrap();
+        assert_eq!(get_setting(&db, "k").unwrap().as_deref(), Some("v1"));
+        set_setting(&db, "k", "v2").unwrap(); // upsert 覆盖
+        assert_eq!(get_setting(&db, "k").unwrap().as_deref(), Some("v2"));
     }
 }

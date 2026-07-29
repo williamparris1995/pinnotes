@@ -28,4 +28,17 @@ describe('CompletedView', () => {
     await fireEvent.click(screen.getByTitle('重新激活'));
     expect((invoke as any).mock.calls.some((c: any) => c[0] === 'reactivate')).toBe(true);
   });
+
+  it('fires delete_note and refreshes the list', async () => {
+    const { invoke } = await import('./tauri');
+    (invoke as any).mockResolvedValue([
+      { id: 'a', content: '旧任务', color: 'pink', x: 0, y: 0, w: 0, h: 0, snooze_minutes: 2, created_at: '', completed_at: 'x', is_hidden: false, hidden_until: null },
+    ]);
+    render(CompletedView);
+    await screen.findByText('旧任务');
+    await fireEvent.click(screen.getByTitle('删除'));
+    expect((invoke as any).mock.calls.some((c: any) => c[0] === 'delete_note')).toBe(true);
+    // delete 后重新拉取 list_completed (onMount 一次 + 删除后一次)
+    expect((invoke as any).mock.calls.filter((c: any) => c[0] === 'list_completed').length).toBeGreaterThanOrEqual(2);
+  });
 });

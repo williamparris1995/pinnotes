@@ -50,4 +50,17 @@ mod tests {
         let until = Utc.with_ymd_and_hms(2026, 7, 22, 10, 4, 0).unwrap();
         assert!(!should_repop(false, Some(until), now));
     }
+
+    #[test]
+    fn no_repop_when_no_hidden_until() {
+        let now = Utc.with_ymd_and_hms(2026, 7, 22, 10, 5, 0).unwrap();
+        assert!(!should_repop(false, None, now));
+    }
+
+    #[test]
+    fn repops_at_exact_due_time() {
+        let t = Utc.with_ymd_and_hms(2026, 7, 22, 10, 4, 0).unwrap();
+        // t <= now（== 边界）→ 应重弹
+        assert!(should_repop(false, Some(t), t));
+    }
 }
