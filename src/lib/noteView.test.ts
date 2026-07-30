@@ -14,7 +14,7 @@ vi.mock('@tauri-apps/api/window', () => ({
 const NOTE = {
   id: 'n1', content: '提交季度报告', color: 'yellow',
   x: 0, y: 0, w: 240, h: 170, snooze_minutes: 2, created_at: '',
-  completed_at: null, is_hidden: false, hidden_until: null,
+  completed_at: null, is_hidden: false, hidden_until: null, markdown: false,
 };
 const callsOf = (invoke: any): string[] => invoke.mock.calls.map((c: any) => c[0]);
 
@@ -86,6 +86,34 @@ describe('NoteView', () => {
     await fireEvent.click(btn);
     expect(callsOf(invoke as any)).toContain('set_snooze');
     expect(await screen.findByText('5分')).toBeTruthy();
+  });
+
+  it('toggles markdown via set_markdown when M↓ clicked', async () => {
+    const { invoke } = await import('./tauri');
+    (invoke as any).mockResolvedValue({ ...NOTE }); // markdown false
+    render(NoteView, { props: { id: 'n1' } });
+    await screen.findByDisplayValue('提交季度报告');
+    await fireEvent.click(screen.getByLabelText('Markdown 格式'));
+    expect(callsOf(invoke as any)).toContain('set_markdown');
+  });
+
+  it('renders sanitized HTML (no textarea) when markdown on with content', async () => {
+    const { invoke } = await import('./tauri');
+    (invoke as any).mockResolvedValue({ ...NOTE, markdown: true, content: '**加粗**' });
+    render(NoteView, { props: { id: 'n1' } });
+    // 渲染态:无 <textarea>(源码态),有渲染的 <strong>加粗</strong>
+    await vi.waitFor(() => expect(document.querySelector('textarea')).toBeNull());
+    expect(await screen.findByText('加粗')).toBeTruthy();
+  });
+
+  it('enters edit mode showing source when rendered body clicked', async () => {
+    const { invoke } = await import('./tauri');
+    (invoke as any).mockResolvedValue({ ...NOTE, markdown: true, content: '**加粗**' });
+    render(NoteView, { props: { id: 'n1' } });
+    await vi.waitFor(() => expect(document.querySelector('textarea')).toBeNull());
+    await fireEvent.click(await screen.findByText('加粗'));
+    // 点渲染态 → 进编辑:textarea 出现,显示源码 **加粗**
+    expect(await screen.findByDisplayValue('**加粗**')).toBeTruthy();
   });
 
   it('shows loadError when get_note rejects', async () => {

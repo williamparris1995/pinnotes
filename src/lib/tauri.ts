@@ -7,4 +7,5 @@ export interface Note {
   x: number; y: number; w: number; h: number;
   snooze_minutes: number; created_at: string;
   completed_at: string | null; is_hidden: boolean; hidden_until: string | null;
+  markdown: boolean;
 }

@@ -3,6 +3,7 @@
   import { invoke, type Note } from './tauri';
   import { t } from './i18n.svelte';
   import { getCurrentWindow } from '@tauri-apps/api/window';
+  import { renderMd } from './markdown';
 
   let { id }: { id: string } = $props();
   let note = $state<Note | null>(null);
@@ -22,6 +23,12 @@
   let isLarge = $derived(note ? note.w >= 340 : false);
 
   let taRef = $state<HTMLTextAreaElement | null>(null);
+
+  // Markdown 编辑/渲染状态机 (design.md ADR-1/2)。editing 仅 markdown 开时有意义:
+  // markdown 关 → 始终 textarea(现状);markdown 开 → 非编辑渲染 HTML,点内容进编辑。
+  let editing = $state(false);
+  let showTextarea = $derived(!note || !note.markdown || editing || note.content === '');
+  let renderedHtml = $derived(note?.markdown && note.content ? renderMd(note.content) : '');
 
   // On failure, show a fallback rather than leaving a blank, always-on-top
   // transparent window stuck on screen.
@@ -54,9 +61,8 @@
     }
   });
 
-  // Save on blur — the textarea is always present, so there is no edit-mode
-  // toggle to exit; clicking colour/size/hidden/complete simply blurs it and
-  // persists any change.
+  // Save on blur — clicking colour/size/hidden/complete/markdown blurs the
+  // textarea and persists any change.
   async function commit() {
     if (note && draft !== note.content) {
       await invoke('edit_note', { id, content: draft });
@@ -84,6 +90,33 @@
     if (!note || note.color === color) return;
     invoke('set_color', { id, color });
     note.color = color;
+  }
+
+  // Markdown per-note 开关 (ADR-2)。关 → 纯 textarea(现状,打开就打字)。
+  function toggleMarkdown() {
+    if (!note) return;
+    const on = !note.markdown;
+    invoke('set_markdown', { id, on });
+    note.markdown = on;
+    if (!on) editing = false;
+  }
+
+  // 点渲染态 → 进编辑(显示源码)。textarea 渲染后再 focus (requestAnimationFrame)。
+  function enterEdit() {
+    editing = true;
+    requestAnimationFrame(() => {
+      taRef?.focus();
+      if (taRef) {
+        const len = taRef.value.length;
+        taRef.selectionStart = taRef.selectionEnd = len;
+      }
+    });
+  }
+
+  // 失焦:保存 + markdown 开则回渲染态。
+  async function handleFocusout() {
+    await commit();
+    if (note?.markdown) editing = false;
   }
 
   // #4: toggle between 普通 and 大号. The OS window resizes; the .note
@@ -146,6 +179,15 @@
         {/each}
       </div>
       <div class="toolbar-tools">
+        <button
+          type="button"
+          class="md-btn"
+          class:on={note.markdown}
+          onclick={toggleMarkdown}
+          title={t('note.markdown')}
+          aria-label={t('note.markdown')}
+          aria-pressed={note.markdown}
+        >M↓</button>
         <button type="button" class="size-btn" title={t('note.snoozeTitle')} onclick={cycleSnooze}>
           {t('note.snoozeMinutes', { count: note.snooze_minutes })}
         </button>
@@ -155,13 +197,26 @@
       </div>
     </div>
     <div class="note-body">
-      <textarea
-        bind:value={draft}
-        bind:this={taRef}
-        oninput={onInput}
-        onfocusout={commit}
-        placeholder={t('note.placeholder')}
-      ></textarea>
+      {#if showTextarea}
+        <textarea
+          bind:value={draft}
+          bind:this={taRef}
+          oninput={onInput}
+          onfocusout={handleFocusout}
+          placeholder={t('note.placeholder')}
+        ></textarea>
+      {:else}
+        <div
+          class="note-md"
+          role="textbox"
+          tabindex="0"
+          onclick={enterEdit}
+          onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && enterEdit()}
+        >
+          {@html renderedHtml}
+          <span class="edit-hint">{t('note.clickToEdit')}</span>
+        </div>
+      {/if}
     </div>
     {#if pendingComplete}
       <div class="note-toast" role="status">
@@ -230,7 +285,7 @@
     padding: 0 10px 2px;
   }
   .color-dots { display: flex; gap: 4px; }
-  .toolbar-tools { display: flex; gap: 4px; }
+  .toolbar-tools { display: flex; gap: 4px; align-items: center; }
   .color-dot {
     width: 14px;
     height: 14px;
@@ -258,6 +313,26 @@
     cursor: pointer;
   }
   .size-btn:hover { background: rgba(255, 255, 255, 0.85); }
+  /* Markdown 开关 (ADR-2):默认描边,激活 accent 实心。挤在色点与 snooze 间。 */
+  .md-btn {
+    width: 20px;
+    height: 16px;
+    padding: 0;
+    border-radius: 4px;
+    border: 1px solid rgba(0, 0, 0, 0.18);
+    background: rgba(255, 255, 255, 0.5);
+    color: rgba(15, 15, 25, 0.6);
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: ui-monospace, monospace;
+  }
+  .md-btn:hover { background: rgba(255, 255, 255, 0.85); }
+  .md-btn.on { background: var(--accent); color: #fff; border-color: var(--accent); }
 
   .note-body {
     flex: 1 1 auto;
@@ -285,6 +360,61 @@
   }
   .note-body textarea::-webkit-scrollbar { display: none; }
   .note-body textarea::placeholder { color: rgba(15, 15, 25, 0.4); font-weight: 500; }
+
+  /* 渲染态 markdown 排版 (design-system v1 token,240×170 小窗适配)。
+     {:global} 包裹:{@html} 插入的元素无 scoped hash,须全局(限定 .note-md 内)。 */
+  .note-md {
+    height: 100%;
+    overflow: auto;
+    scrollbar-width: none;
+    padding: 2px 16px 4px;
+    font-family: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
+    color: rgba(15, 15, 25, 0.86);
+    cursor: text;
+    position: relative;
+  }
+  .note-md::-webkit-scrollbar { display: none; }
+  .note-md :global(h1) { font-size: 16px; font-weight: 800; margin: 2px 0; line-height: 1.25; }
+  .note-md :global(h2) { font-size: 15px; font-weight: 800; margin: 2px 0; }
+  .note-md :global(h3) { font-size: 14px; font-weight: 700; margin: 1px 0; }
+  .note-md :global(ul),
+  .note-md :global(ol) { margin: 2px 0; padding-left: 18px; }
+  .note-md :global(li) { margin: 1px 0; }
+  .note-md :global(blockquote) {
+    margin: 2px 0;
+    padding-left: 8px;
+    border-left: 2px solid rgba(0, 0, 0, 0.16);
+    color: rgba(15, 15, 25, 0.6);
+  }
+  .note-md :global(code) {
+    background: rgba(0, 0, 0, 0.07);
+    border-radius: 3px;
+    padding: 0 4px;
+    font-family: ui-monospace, monospace;
+    font-size: 13px;
+  }
+  .note-md :global(del) { color: rgba(15, 15, 25, 0.6); }
+  .note-md :global(hr) { border: none; border-top: 1px solid rgba(0, 0, 0, 0.16); margin: 6px 0; }
+  .note-md :global(p) { margin: 2px 0; }
+  .note-md :global(strong) { font-weight: 800; }
+  .edit-hint {
+    position: absolute;
+    right: 8px;
+    bottom: 6px;
+    font-size: 10px;
+    font-weight: 500;
+    background: rgba(20, 20, 30, 0.7);
+    color: #fff;
+    padding: 2px 6px;
+    border-radius: 4px;
+    opacity: 0;
+    transition: opacity 0.12s;
+    pointer-events: none;
+  }
+  .note-md:hover .edit-hint { opacity: 1; }
 
   .note-toast {
     flex: 0 0 auto;

@@ -38,6 +38,7 @@ pub fn create_note_impl(app: &AppHandle, state: &AppState) -> Result<Note, Strin
         completed_at: None,
         is_hidden: false,
         hidden_until: None,
+        markdown: false,
     };
     NoteRepository::create(&state.db, &n)?;
     window_manager::open_note(app, &n).map_err(to_str)?;
@@ -79,6 +80,7 @@ pub(crate) fn maybe_welcome_note(db: &Db) -> Result<Option<Note>, String> {
         completed_at: None,
         is_hidden: false,
         hidden_until: None,
+        markdown: false,
     };
     NoteRepository::create(db, &note)?;
     set_setting(db, "first_run_done", "1")?;
@@ -139,6 +141,11 @@ pub fn edit_note(id: String, content: String, state: State<AppState>) -> Result<
 #[tauri::command]
 pub fn set_color(id: String, color: String, state: State<AppState>) -> Result<(), String> {
     NoteRepository::update_color(&state.db, &id, &color)
+}
+
+#[tauri::command]
+pub fn set_markdown(id: String, on: bool, state: State<AppState>) -> Result<(), String> {
+    NoteRepository::update_markdown(&state.db, &id, on)
 }
 
 #[tauri::command]
@@ -207,6 +214,7 @@ pub fn copy_note(id: String, app: AppHandle, state: State<AppState>) -> Result<N
         completed_at: None,
         is_hidden: false,
         hidden_until: None,
+        markdown: src.markdown,
     };
     NoteRepository::create(&state.db, &n)?;
     window_manager::open_note(&app, &n).map_err(to_str)?;

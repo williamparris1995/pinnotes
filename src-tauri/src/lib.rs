@@ -104,6 +104,7 @@ pub fn run() {
             commands::complete_note,
             commands::edit_note,
             commands::set_color,
+            commands::set_markdown,
             commands::set_size,
             commands::set_snooze,
             commands::move_note,

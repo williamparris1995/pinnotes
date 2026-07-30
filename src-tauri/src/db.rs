@@ -13,11 +13,31 @@ pub fn init(conn: Connection) -> rusqlite::Result<Db> {
             w REAL NOT NULL DEFAULT 240, h REAL NOT NULL DEFAULT 170,
             snooze_minutes INTEGER NOT NULL DEFAULT 2,
             created_at TEXT NOT NULL,
-            completed_at TEXT, is_hidden INTEGER NOT NULL DEFAULT 0, hidden_until TEXT
+            completed_at TEXT, is_hidden INTEGER NOT NULL DEFAULT 0, hidden_until TEXT,
+            markdown INTEGER NOT NULL DEFAULT 0
         );
         CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, val TEXT NOT NULL);",
     )?;
+    migrate(&conn)?;
     Ok(Mutex::new(conn))
+}
+
+/// 幂等 migration：0.5.x 老库的 notes 表无 markdown 列，补上（ADR-5）。
+/// `CREATE TABLE IF NOT EXISTS` 对已存在的表不加新列，故需 ALTER；
+/// SQLite `ADD COLUMN` 非幂等（重复报错），先用 PRAGMA 探测列是否存在。
+fn migrate(conn: &Connection) -> rusqlite::Result<()> {
+    let has_markdown = conn
+        .prepare("PRAGMA table_info(notes)")?
+        .query_map([], |r| r.get::<_, String>(1))?
+        .filter_map(Result::ok)
+        .any(|name| name == "markdown");
+    if !has_markdown {
+        conn.execute(
+            "ALTER TABLE notes ADD COLUMN markdown INTEGER NOT NULL DEFAULT 0",
+            [],
+        )?;
+    }
+    Ok(())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -34,6 +54,7 @@ pub struct Note {
     pub completed_at: Option<String>,
     pub is_hidden: bool,
     pub hidden_until: Option<String>,
+    pub markdown: bool,
 }
 
 fn row_to_note(row: &rusqlite::Row) -> rusqlite::Result<Note> {
@@ -50,6 +71,7 @@ fn row_to_note(row: &rusqlite::Row) -> rusqlite::Result<Note> {
         completed_at: row.get(9)?,
         is_hidden: row.get::<_, i64>(10)? != 0,
         hidden_until: row.get(11)?,
+        markdown: row.get::<_, i64>(12)? != 0,
     })
 }
 
@@ -77,7 +99,7 @@ where
 }
 
 /// 显式列名(顺序对齐 row_to_note 的 0–11),替代脆弱的 SELECT *。
-const NOTES_COLS: &str = "id, content, color, x, y, w, h, snooze_minutes, created_at, completed_at, is_hidden, hidden_until";
+const NOTES_COLS: &str = "id, content, color, x, y, w, h, snooze_minutes, created_at, completed_at, is_hidden, hidden_until, markdown";
 
 pub struct NoteRepository;
 
@@ -106,10 +128,10 @@ impl NoteRepository {
 
     pub fn create(db: &Db, n: &Note) -> Result<(), String> {
         run_exec(db, |c| c.execute(
-            "INSERT INTO notes (id, content, color, x, y, w, h, snooze_minutes, created_at, completed_at, is_hidden, hidden_until)
-             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12)",
+            "INSERT INTO notes (id, content, color, x, y, w, h, snooze_minutes, created_at, completed_at, is_hidden, hidden_until, markdown)
+             VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13)",
             params![n.id, n.content, n.color, n.x, n.y, n.w, n.h, n.snooze_minutes,
-                    n.created_at, n.completed_at, n.is_hidden as i64, n.hidden_until],
+                    n.created_at, n.completed_at, n.is_hidden as i64, n.hidden_until, n.markdown as i64],
         ))
     }
 
@@ -123,6 +145,10 @@ impl NoteRepository {
 
     pub fn update_color(db: &Db, id: &str, color: &str) -> Result<(), String> {
         run_exec(db, |c| c.execute("UPDATE notes SET color=?1 WHERE id=?2", params![color, id]))
+    }
+
+    pub fn update_markdown(db: &Db, id: &str, on: bool) -> Result<(), String> {
+        run_exec(db, |c| c.execute("UPDATE notes SET markdown=?1 WHERE id=?2", params![on as i64, id]))
     }
 
     pub fn update_size(db: &Db, id: &str, w: f64, h: f64) -> Result<(), String> {
@@ -161,7 +187,7 @@ mod tests {
     fn sample(id: &str) -> Note {
         Note { id: id.into(), content: "c".into(), color: "yellow".into(), x: 0.0, y: 0.0,
                w: 240.0, h: 170.0, snooze_minutes: 2, created_at: "2026-07-22T10:00:00Z".into(),
-               completed_at: None, is_hidden: false, hidden_until: None }
+               completed_at: None, is_hidden: false, hidden_until: None, markdown: false }
     }
 
     #[test]
@@ -233,6 +259,7 @@ mod tests {
             completed_at: Some("2026-07-22T11:00:00Z".into()),
             is_hidden: true, // i64↔bool 转换点 (CLAUDE.md 强调)
             hidden_until: Some("2026-07-22T10:05:00Z".into()),
+            markdown: true,
         };
         NoteRepository::create(&db, &original).unwrap();
         assert_eq!(NoteRepository::get(&db, "x").unwrap().unwrap(), original);
@@ -261,5 +288,41 @@ mod tests {
     fn get_missing_returns_none() {
         let db = mem();
         assert!(NoteRepository::get(&db, "nope").unwrap().is_none());
+    }
+
+    #[test]
+    fn update_markdown_toggles_flag() {
+        let db = mem();
+        NoteRepository::create(&db, &sample("a")).unwrap();
+        assert!(!NoteRepository::get(&db, "a").unwrap().unwrap().markdown);
+        NoteRepository::update_markdown(&db, "a", true).unwrap();
+        assert!(NoteRepository::get(&db, "a").unwrap().unwrap().markdown);
+    }
+
+    #[test]
+    fn init_migrates_old_db_adding_markdown_column() {
+        let conn = Connection::open_in_memory().unwrap();
+        // 模拟 0.5.x 老库：notes 表无 markdown 列
+        conn.execute_batch(
+            "CREATE TABLE notes (
+                id TEXT PRIMARY KEY, content TEXT NOT NULL,
+                color TEXT NOT NULL DEFAULT 'yellow',
+                x REAL NOT NULL DEFAULT 120, y REAL NOT NULL DEFAULT 40,
+                w REAL NOT NULL DEFAULT 240, h REAL NOT NULL DEFAULT 170,
+                snooze_minutes INTEGER NOT NULL DEFAULT 2,
+                created_at TEXT NOT NULL,
+                completed_at TEXT, is_hidden INTEGER NOT NULL DEFAULT 0, hidden_until TEXT
+            );",
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO notes (id,content,color,x,y,w,h,snooze_minutes,created_at) \
+             VALUES ('old','c','yellow',0,0,240,170,2,'2026-01-01T00:00:00Z')",
+            [],
+        )
+        .unwrap();
+        let db = init(conn).unwrap();
+        // 老便签经 migration 后 markdown 默认 false（行为零变化，NFR-3）
+        assert!(!NoteRepository::get(&db, "old").unwrap().unwrap().markdown);
     }
 }

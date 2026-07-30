@@ -16,6 +16,8 @@ export const en: Record<string, string> = {
   'note.color.pink': 'Pink',
   'note.color.blue': 'Blue',
   'note.color.green': 'Green',
+  'note.markdown': 'Markdown formatting',
+  'note.clickToEdit': 'Click to edit',
   // completedView
   'completed.today': 'Today {hh}:{mm}',
   'completed.yesterday': 'Yesterday {hh}:{mm}',

@@ -16,6 +16,8 @@ export const zh: Record<string, string> = {
   'note.color.pink': '粉',
   'note.color.blue': '蓝',
   'note.color.green': '绿',
+  'note.markdown': 'Markdown 格式',
+  'note.clickToEdit': '点击编辑',
   // completedView
   'completed.today': '今天 {hh}:{mm}',
   'completed.yesterday': '昨天 {hh}:{mm}',
