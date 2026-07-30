@@ -1,6 +1,6 @@
 # Release 0.5.1 — 质量基建
 
-> **status**: pending
+> **status**: 代码完成（release-0.5.1 分支,95fa3c7）,待手动测试 + 发版
 > **version**: 0.5.1 (patch) · 无用户可见行为变化
 
 ## Release Goal
@@ -9,7 +9,7 @@
 
 ## Sprints
 
-- [ ] [sprint-1：质量加固](sprint-1/sprint.md)
+- [x] [sprint-1：质量加固](sprint-1/sprint.md)
 
 ## Done-criteria
 

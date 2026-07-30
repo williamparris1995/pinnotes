@@ -8,11 +8,11 @@
 - **项目基线**：✅ [project/](project/)
 - **当前 Release**：0.5.1 质量基建 → [release-0.5.1/release.md](release-0.5.1/release.md)
 - **当前 Sprint**：sprint-1 ✅ **全完成（4/4）** → [sprint-1/sprint.md](release-0.5.1/sprint-1/sprint.md)
-- **下一步**：release 0.5.1 收尾——版本号 0.5.0→0.5.1 三处同步（package.json / tauri.conf.json / Cargo.toml）+ CHANGELOG 一节，然后发版（推 `v*` tag → CI）
+- **下一步**：手动测试应用（颜色 / 功能）→ 确认后发版（merge main + push `v0.5.1` tag → CI 三平台构建）
 
 ## resume
 
-sprint-1 全完成：README（S）、前端测试（M，20 用例）、Rust 测试（M，27 用例）、重构（L，包 A+B，行为不变）。release 0.5.1 仅剩版本 bump + CHANGELOG + 发版。
+sprint-1 全完成 + release 0.5.1 收尾（version bump 0.5.1 + CHANGELOG + commit 到 `release-0.5.1` 分支 95fa3c7，pre-commit hook 验证通过）。仅剩手动测试应用 + 发版。
 
 ## 推荐执行顺序
 
