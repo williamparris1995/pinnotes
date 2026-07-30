@@ -1,6 +1,6 @@
 # Release 0.5.1 — 质量基建
 
-> **status**: 代码完成（release-0.5.1 分支,95fa3c7）,待手动测试 + 发版
+> **status**: ✅ 已发版（`v0.5.1` tag pushed @ `a6a3ae2`, CI 三平台构建发布中）
 > **version**: 0.5.1 (patch) · 无用户可见行为变化
 
 ## Release Goal

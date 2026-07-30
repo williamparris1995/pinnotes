@@ -6,13 +6,13 @@
 
 - **Product Goal**：✅ [project/vision.md](project/vision.md)
 - **项目基线**：✅ [project/](project/)
-- **当前 Release**：0.5.1 质量基建 → [release-0.5.1/release.md](release-0.5.1/release.md)
+- **当前 Release**：0.5.1 质量基建 ✅ **已发版**（`v0.5.1` tag pushed, CI 构建发布中）→ [release-0.5.1/release.md](release-0.5.1/release.md)
 - **当前 Sprint**：sprint-1 ✅ **全完成（4/4）** → [sprint-1/sprint.md](release-0.5.1/sprint-1/sprint.md)
-- **下一步**：手动测试应用（颜色 / 功能）→ 确认后发版（merge main + push `v0.5.1` tag → CI 三平台构建）
+- **下一步**：① 等 CI 构建完成 → 验证 GitHub Release（三平台安装包）→ ② 规划下一个 release：Markdown 支持（从 vision「范围外/YAGNI」移入范围）
 
 ## resume
 
-sprint-1 全完成 + release 0.5.1 收尾（version bump 0.5.1 + CHANGELOG + commit 到 `release-0.5.1` 分支 95fa3c7，pre-commit hook 验证通过）。仅剩手动测试应用 + 发版。
+release 0.5.1 已发版：手动测试通过 → commit `a6a3ae2`（文档状态同步）→ fast-forward merge 进 main → push `v0.5.1` annotated tag（触发 release.yml 三平台 CI）。等 CI 构建完成并生成 GitHub Release 后全流程收尾。下一个 release 候选：Markdown 支持（用户主动提议，当前在 vision「范围外/YAGNI」，需做范围决策 + 分解）。
 
 ## 推荐执行顺序
 
