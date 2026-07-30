@@ -6,13 +6,15 @@
 
 - **Product Goal**：✅ [project/vision.md](project/vision.md)
 - **项目基线**：✅ [project/](project/)
-- **当前 Release**：0.5.1 质量基建 ✅ **已发版**（`v0.5.1` tag pushed, CI 构建发布中）→ [release-0.5.1/release.md](release-0.5.1/release.md)
-- **当前 Sprint**：sprint-1 ✅ **全完成（4/4）** → [sprint-1/sprint.md](release-0.5.1/sprint-1/sprint.md)
-- **下一步**：① 等 CI 构建完成 → 验证 GitHub Release（三平台安装包）→ ② 规划下一个 release：Markdown 支持（从 vision「范围外/YAGNI」移入范围）
+- **当前 Release**：0.6.0 便签 Markdown 格式化 → [release-0.6.0/release.md](release-0.6.0/release.md)
+- **当前 Sprint**：sprint-1（Markdown 核心）→ [sprint-1/sprint.md](release-0.6.0/sprint-1/sprint.md)
+- **当前 Feature**：markdown（analysis · 形态/子集待定稿）→ [markdown/state.md](release-0.6.0/sprint-1/markdown/state.md)
+- **上一个 Release**：0.5.1 ✅ 已发版（`v0.5.1` tag pushed, CI 构建发布中）
+- **下一步**：markdown feature 进入 analysis——细化编辑/渲染形态 + Markdown 语法子集；并行等 0.5.1 CI 构建完成验证 GitHub Release
 
 ## resume
 
-release 0.5.1 已发版：手动测试通过 → commit `a6a3ae2`（文档状态同步）→ fast-forward merge 进 main → push `v0.5.1` annotated tag（触发 release.yml 三平台 CI）。等 CI 构建完成并生成 GitHub Release 后全流程收尾。下一个 release 候选：Markdown 支持（用户主动提议，当前在 vision「范围外/YAGNI」，需做范围决策 + 分解）。
+0.5.1 已发版（v0.5.1 tag pushed，CI 构建发布中，待 GitHub Release 落地验证）。产品决策：Markdown 正式纳入范围（vision.md 已更新，从 YAGNI 移入）。已分解 release 0.6.0（便签 Markdown 格式化），markdown feature 进入 analysis 阶段——待细化编辑/渲染形态 + 语法子集。
 
 ## 推荐执行顺序
 
