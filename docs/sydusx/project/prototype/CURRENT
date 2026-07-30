@@ -1,0 +1,3 @@
+# Current prototype: v1
+
+- v1: 便签 Markdown 渲染态原型——复用 theme.css token + 新增 markdown 排版（小窗适配）；3 画面（渲染态 4 色 / toolbar 开关 / 编辑-渲染切换）。self-design（OD active:false）。

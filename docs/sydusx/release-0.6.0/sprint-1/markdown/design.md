@@ -2,6 +2,7 @@
 
 > feature: markdown · release 0.6.0 · sprint-1
 > 产出阶段：design(L 级 full) · 引用 [spec.md](spec.md),不重复 FR/NFR
+> UI 原型：project/prototype/[CURRENT](../../../project/prototype/CURRENT) → v1
 
 ## 决策记录（ADR）
 
