@@ -2,6 +2,14 @@
 
 PinNotes 各版本变更。安装包与自动更新清单(`latest.json`)发布在 [GitHub Releases](https://github.com/williamparris1995/pinnotes/releases)。
 
+## 0.6.0
+
+- **便签 Markdown 格式化**:每条便签可单独开启 Markdown(per-note opt-in,默认关闭;旧便签行为/视觉零变化)。
+- 编辑/渲染切换:开启后默认渲染态——加粗 / 斜体 / 删除线 / 标题(#~###) / 有序·无序列表 / 行内代码 / 引用 / 分隔线 精简子集;点内容进源码编辑、失焦回渲染并保存源码。
+- 渲染管道 marked + DOMPurify 白名单,排除表格 / 图片 / 链接 / 脚本(XSS 安全)。
+- 已完成列表维持纯文本单行截断(不渲染 Markdown),保紧凑布局。
+- 向后兼容:幂等 ALTER TABLE migration,0.5.x 老库平滑升级、既有便签 markdown 默认关。
+
 ## 0.5.1
 
 - **质量基建**:无用户可见行为变化,加固测试覆盖与代码质量。
