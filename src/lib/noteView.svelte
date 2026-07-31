@@ -119,6 +119,12 @@
     if (note?.markdown) editing = false;
   }
 
+  // 获焦即"正在编辑"(markdown 开时)。空便签经 content==='' 显 textarea 但未 pin editing,
+  // 防抖保存写回 content 后会翻转、踢出编辑态;获焦 pin 住 editing,守住 FR-4(失焦才回渲染)。
+  function handleFocus() {
+    if (note?.markdown) editing = true;
+  }
+
   // #4: toggle between 普通 and 大号. The OS window resizes; the .note
   // (100% width/height) fills it.
   function toggleSize() {
@@ -201,6 +207,7 @@
         <textarea
           bind:value={draft}
           bind:this={taRef}
+          onfocus={handleFocus}
           oninput={onInput}
           onfocusout={handleFocusout}
           placeholder={t('note.placeholder')}
@@ -370,7 +377,10 @@
     padding: 2px 16px 4px;
     font-family: inherit;
     font-size: 15px;
-    font-weight: 600;
+    /* 渲染态用常规字重(400),留出空间让 <strong>/标题加粗突出:
+       CJK 字体多只有 Regular(400)+Bold(700) 两面,600 会被向上取整到 Bold,
+       导致基础文字已是粗体、strong(800→700) 无法更粗、看不出差异。 */
+    font-weight: 400;
     line-height: 1.4;
     color: rgba(15, 15, 25, 0.86);
     cursor: text;
@@ -399,7 +409,7 @@
   .note-md :global(del) { color: rgba(15, 15, 25, 0.6); }
   .note-md :global(hr) { border: none; border-top: 1px solid rgba(0, 0, 0, 0.16); margin: 6px 0; }
   .note-md :global(p) { margin: 2px 0; }
-  .note-md :global(strong) { font-weight: 800; }
+  .note-md :global(strong) { font-weight: 700; }
   .edit-hint {
     position: absolute;
     right: 8px;

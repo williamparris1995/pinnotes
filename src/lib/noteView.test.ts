@@ -116,6 +116,22 @@ describe('NoteView', () => {
     expect(await screen.findByDisplayValue('**加粗**')).toBeTruthy();
   });
 
+  it('keeps editing an empty markdown note after the debounced autosave (no flip to rendered)', async () => {
+    vi.useFakeTimers();
+    const { invoke } = await import('./tauri');
+    (invoke as any).mockResolvedValue({ ...NOTE, markdown: true, content: '' });
+    render(NoteView, { props: { id: 'n1' } });
+    // 空 markdown 便签:进编辑态(content 空 → 显 textarea)
+    await vi.waitFor(() => expect(document.querySelector('textarea')).not.toBeNull());
+    const ta = document.querySelector('textarea')!;
+    await fireEvent.focus(ta);
+    // 打字一个字符,500ms 防抖保存会写回 note.content(回归触发点)
+    await fireEvent.input(ta, { target: { value: 'a' } });
+    await vi.advanceTimersByTimeAsync(500);
+    // FR-4:写回 content 后不得翻转为渲染态;仍在编辑态 textarea(失焦才回渲染)
+    expect(document.querySelector('textarea')).not.toBeNull();
+  });
+
   it('shows loadError when get_note rejects', async () => {
     const { invoke } = await import('./tauri');
     (invoke as any).mockRejectedValue(new Error('no note'));
