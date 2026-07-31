@@ -23,7 +23,7 @@
 - **FR-4** 触发：点内容区进编辑态（源码），失焦回渲染态；失焦顺带触发既有保存逻辑（存源码 content）。
 - **FR-5** 子集渲染：正确渲染 加粗 / 斜体 / 删除线 / 标题(#~###) / 无序+有序列表 / 行内代码(`) / 引用(>) / 分隔线(---)。
 - **FR-6** 排除项降级：表格 / 代码块(```) / 图片 / 链接 语法不渲染——按原文安全显示，不报错。
-- **FR-7** 已完成列表一致：已完成列表中启用 Markdown 的便签内容也渲染（只读），与便签渲染一致。
+- **FR-7** 已完成列表不渲染：已完成列表维持纯文本单行截断，**不渲染** Markdown（design ADR-4 调整：块级元素撑破紧凑列表布局）。
 - **FR-8** 未启用便签不变：禁用 Markdown 的便签维持当前纯 textarea 行为/视觉，零变化。
 
 ## 非功能需求（NFR）
@@ -42,22 +42,22 @@
 - **A-2** 启用 Markdown → 渲染态显示 HTML；点内容 → 进编辑态显示源码；失焦 → 回渲染态 + 保存源码。
 - **A-3** 加粗/斜体/列表/标题等子集语法正确渲染；表格/代码块/图片/链接语法安全降级（不渲染、不报错）。
 - **A-4** 便签内输入 `<script>alert(1)</script>` 或原始 HTML → 不执行、不渲染（XSS 验证）。
-- **A-5** 已完成列表中启用 Markdown 的便签渲染与便签本体一致。
+- **A-5** 已完成列表维持纯文本截断、不渲染 Markdown（与 0.5.x 一致，回归）。
 - **A-6** 禁用 Markdown 的便签行为/视觉与 0.5.x 完全一致（回归）。
 - **A-7** 多便签：A 编辑失焦 → A 回渲染；切到 B 编辑互不干扰。
 
 ## 范围边界（Scope）
 
-**范围内**：per-note 开关 + 编辑/渲染切换（点内容进编辑）+ 精简子集渲染 + 已完成列表渲染 + XSS 安全。
+**范围内**：per-note 开关 + 编辑/渲染切换（点内容进编辑）+ 精简子集渲染 + XSS 安全。
 
-**范围外（本 release 不做 / YAGNI）**：WYSIWYG 编辑、表格/代码块/图片/链接、全局 Markdown、编辑态语法高亮、Markdown 导出、跨便签模板、Markdown 帮助/语法文档页。
+**范围外（本 release 不做 / YAGNI）**：WYSIWYG 编辑、表格/代码块/图片/链接、全局 Markdown、已完成列表 Markdown 渲染（ADR-4 维持纯文本）、编辑态语法高亮、Markdown 导出、跨便签模板、Markdown 帮助/语法文档页。
 
 **留 design 阶段定**：marked 的具体 sanitize 策略（配置 escape vs 叠加 DOMPurify）、notes 表 `markdown` 字段存储细节（i64，类比 is_hidden）、toolbar 开关按钮图标/位置、渲染态 CSS 适配。
 
 ## 技术约束（spec 级）
 
 - **db**：notes 表新增 `markdown` 字段（布尔，i64 存储，类比 is_hidden）。
-- **前端**：noteView.svelte 增加渲染态 + 编辑/渲染状态机；completedView.svelte 渲染保持一致。
+- **前端**：noteView.svelte 增加渲染态 + 编辑/渲染状态机；completedView.svelte 不改（ADR-4，维持纯文本截断）。
 - **依赖**：marked（渲染库）；sanitize 策略 design 定。
 
 ## S/M/L 评级

@@ -1,6 +1,6 @@
 # Sprint 1 — Markdown 核心
 
-> **status**: pending
+> **status**: done
 
 ## Sprint Goal
 
@@ -8,7 +8,7 @@
 
 ## Features
 
-- [ ] [markdown：便签 Markdown 格式化](markdown/feature.md)
+- [x] [markdown：便签 Markdown 格式化](markdown/feature.md)
 
 ## 备注
 

@@ -8,9 +8,9 @@
 - **项目基线**：✅ [project/](project/)
 - **当前 Release**：0.6.0 便签 Markdown 格式化 → [release-0.6.0/release.md](release-0.6.0/release.md)
 - **当前 Sprint**：sprint-1（Markdown 核心）→ [sprint-1/sprint.md](release-0.6.0/sprint-1/sprint.md)
-- **当前 Feature**：markdown（analysis · 形态/子集待定稿）→ [markdown/state.md](release-0.6.0/sprint-1/markdown/state.md)
+- **当前 Feature**：markdown ✅ done（全阶段过 + 手动 NFR 核验）→ [markdown/state.md](release-0.6.0/sprint-1/markdown/state.md)
 - **上一个 Release**：0.5.1 ✅ 已发版（`v0.5.1` tag pushed, CI 构建发布中）
-- **下一步**：markdown feature 进入 analysis——细化编辑/渲染形态 + Markdown 语法子集；并行等 0.5.1 CI 构建完成验证 GitHub Release
+- **下一步**：markdown feature done；sprint-1 done；待 commit 工作树修复 → merge feature/markdown → main → release 0.6.0 release gate / deploy
 
 ## resume
 
